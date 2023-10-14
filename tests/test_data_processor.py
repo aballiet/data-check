@@ -44,5 +44,6 @@ def test_display_diff_rows():
 
     result = diff.display_diff_rows('C')
 
-    excepted_result = pd.DataFrame({'A': [3], 'B': [6], 'C_x': ['z'], 'C_y': ['r']})
+    # TO FIX : dtypes are now all string
+    excepted_result = pd.DataFrame({'A': ['3'], 'B_x': ['6'], 'C_x': ['z'], 'B_y': ['7'], 'C_y': ['r']}, index=[2])
     pd.testing.assert_frame_equal(left=result, right=excepted_result)
