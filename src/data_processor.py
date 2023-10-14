@@ -55,7 +55,6 @@ class ComputeDiff():
         df.drop(columns=[0], inplace=True)
         return df.sort_values(by="percentage_of_diff", ascending=False)
 
-
     # Create a query to compare two tables common and exlusive primary keys for two tables
     def compare_tables_primary_key_query(self) -> str:
         return f"""
@@ -64,3 +63,9 @@ class ComputeDiff():
             FULL OUTER JOIN `{self.table2}` AS table2
             USING ({self.primary_key})
         """
+
+
+def get_common_columns(columns1: list, columns2: list) -> list:
+    common_columns = list(set(columns1).intersection(set(columns2)))
+    common_columns.sort()
+    return common_columns

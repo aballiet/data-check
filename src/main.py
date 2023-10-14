@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
-from client import get_common_columns, get_dataframes
-from data_processor import ComputeDiff
+from typing import List, Tuple
+from client import get_columns, query_table
+from data_processor import ComputeDiff, get_common_columns
 from data_formatter import highlight_selected_text
+from tools import run_multithreaded
 
 st.set_page_config(layout="wide")
 st.title('Perform Data Check on BigQuery Tables')
@@ -22,6 +24,15 @@ df2 = None
 primary_key = None
 columns_to_compare = None
 
+def get_table_columns(table1:str, table2:str) -> Tuple[List[str], List[str]]:
+    jobs = [(get_columns, {"table": table1}), (get_columns, {"table": table2})]
+    columns_table_1, columns_table_2 = run_multithreaded(jobs=jobs, max_workers=2)
+    return columns_table_1, columns_table_2
+
+def get_dataframes(table1:str, table2:str, columns: list[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    jobs = [(query_table, {'table': table1, 'columns': columns}), (query_table, {'table': table2, 'columns': columns})]
+    df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
+    return df1, df2
 
 def update_first_step():
     st.session_state.table1 = st.session_state.temp_table_1
@@ -41,7 +52,8 @@ def update_second_step():
 if st.session_state.config_tables:
     with st.form(key='second_step'):
         st.write('Retrieving list of common columns...')
-        common_columns = get_common_columns(st.session_state.table1, st.session_state.table2)
+        columns_table_1, columns_table_2 = get_table_columns(st.session_state.table1, st.session_state.table2)
+        common_columns = get_common_columns(columns_table_1, columns_table_2)
         st.selectbox('Select primary key:', list(common_columns), key='temp_primary_key')
         st.multiselect('Select columns to compare:', list(common_columns), key='temp_columns_to_compare')
         submit = st.form_submit_button(label='OK', on_click=update_second_step)
@@ -59,7 +71,7 @@ if st.session_state.loaded_tables:
 
         # Create dataframes from the BigQuery results
         st.write('Creating dataframes...')
-        df1, df2 = get_dataframes(st.session_state.table1, st.session_state.table2, st.session_state.columns_to_compare + [st.session_state.primary_key])
+        df1, df2 = get_dataframes(table1=st.session_state.table1, table2=st.session_state.table2, columns=st.session_state.columns_to_compare + [st.session_state.primary_key])
 
         diff = ComputeDiff(
             table1=st.session_state.table1,
