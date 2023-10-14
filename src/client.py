@@ -21,3 +21,18 @@ class BigQueryClient:
     def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
         query_job = self.client.query(query)
         return query_job.to_dataframe()
+
+    def get_common_columns(self, table1:str, table2:str) -> list:
+        columns_table_1 = self.get_columns(table1)
+        columns_table_2 = self.get_columns(table2)
+        common_columns = set(columns_table_1).intersection(set(columns_table_2))
+        return list(common_columns)
+
+    def query_table(self, table:str , columns: list[str]) -> pd.DataFrame:
+        columns = ", ".join(columns)
+        query = f"""
+            SELECT
+                {columns}
+            FROM `{table}`
+        """
+        return self.run_query_to_dataframe(query=query)

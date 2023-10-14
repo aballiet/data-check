@@ -1,23 +1,36 @@
 import pandas as pd
 
+# Given two DataFrames df1 & df2, compute the ratio of common values for each column, use a given primary_key to compare data
+# Example with user_id as primary_key:
+# Considering these two dataframe :
 
-def compute_diff_ratio(df1: pd.DataFrame, df2: pd.DataFrame):
+#     df1 = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [4, 5, 6, 7], 'C': ['x', 'y', 'z', 'w']})
+#     df2 = pd.DataFrame({'A': [1, 2, 3, 5], 'B': [6, 5, 7, 8], 'C': ['z', 'y', 'r', 'v']})
+
+# -> I expect to get : result['B'] = 0.75 and result['C'] = 0.5
+def compute_common_value_ratios(df1, df2, primary_key) -> pd.Series:
     # Find common columns
     common_columns = df1.columns.intersection(df2.columns)
+    common_columns = common_columns.drop(primary_key)
 
     if len(common_columns) == 0:
         raise ValueError("No common columns found between the DataFrames.")
 
-    # Initialize a new DataFrame to store the results
-    result_df = pd.DataFrame(columns=common_columns)
+    # Initialize a Series to store the results
+    result_series = pd.Series(index=common_columns, dtype=float)
 
-    # Iterate through common columns and compute the difference ratio
     for col in common_columns:
-        diff = df1[col] - df2[col]
-        ratio = diff / df1[col]  # You can choose df2[col] if you prefer the other DataFrame
-        result_df[col] = ratio
+        common_rows = df1.merge(df2, on=[primary_key, col], how='inner')
 
-    return result_df
+        if not common_rows.empty:
+            common_values = common_rows[col].values
+            total_values = df1[col].values
+            common_ratio = len(common_values) / len(total_values)
+            result_series[col] = common_ratio
+        else:
+            result_series[col] = 0.0
+
+    return result_series
 
 
 # Create a query to compare two tables common and exlusive primary keys for two tables
