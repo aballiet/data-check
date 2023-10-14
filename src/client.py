@@ -1,5 +1,6 @@
 import streamlit as st
 from google.cloud import bigquery
+import pandas as pd
 
 
 class BigQueryClient:
@@ -16,3 +17,7 @@ class BigQueryClient:
     def run_query(self, query: str) -> list:
         query_job = self.client.query(query)
         return [dict(row) for row in query_job]
+
+    def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
+        query_job = self.client.query(query)
+        return query_job.to_dataframe()
