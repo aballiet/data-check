@@ -1,0 +1,6 @@
+.venv
+.vscode
+
+# Standard Python ignore list
+*.py[cod]
+__pycache__/
