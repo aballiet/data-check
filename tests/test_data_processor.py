@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from src.data_processor import compute_common_value_ratios
+from src.data_processor import ComputeDiff
 
 def dummy_dataframe() -> pd.DataFrame:
     return pd.DataFrame({
@@ -9,11 +9,23 @@ def dummy_dataframe() -> pd.DataFrame:
         'last_name': ['Doe', 'Doe', 'Doe'],
     })
 
-def test_common_rows():
+def test_compute_common_value_ratios():
     # Example usage
     df1 = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [4, 5, 6, 7], 'C': ['x', 'y', 'z', 'w']})
-    df2 = pd.DataFrame({'A': [1, 2, 3, 5], 'B': [6, 5, 7, 8], 'C': ['z', 'y', 'r', 'v']})
+    df2 = pd.DataFrame({'A': [1, 2, 3, 5], 'B': [6, 5, 7, 8], 'C': ['x', 'y', 'z', 'w']})
 
-    result = compute_common_value_ratios(df1, df2, primary_key='A')
-    assert result['B'] == 0.25
-    assert result['C'] == 0.25
+    diff = ComputeDiff(
+        table1="table1",
+        table2="table2",
+        df1=df1,
+        df2=df2,
+        primary_key='A'
+    )
+
+    result = diff.compute_common_value_ratios()
+
+    excepted_result = pd.Series(
+        [0.75, 0.25, 0.75]
+        , index=['A', 'B', 'C']
+    )
+    pd.testing.assert_series_equal(left=result, right=excepted_result)

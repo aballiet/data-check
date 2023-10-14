@@ -3,3 +3,4 @@ google-cloud-bigquery
 db-dtypes
 pandas
 pytest
+pandas-gbq

@@ -1,6 +1,7 @@
 import streamlit as st
 from google.cloud import bigquery
 import pandas as pd
+from pandas_gbq import read_gbq
 
 
 class BigQueryClient:
@@ -13,14 +14,8 @@ class BigQueryClient:
         table: bigquery.Table = client.get_table(table)
         return [field.name for field in table.schema]
 
-    # Run query using BigQueryClient and return results in a list of dictionaries
-    def run_query(self, query: str) -> list:
-        query_job = self.client.query(query)
-        return [dict(row) for row in query_job]
-
     def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
-        query_job = self.client.query(query)
-        return query_job.to_dataframe()
+        return read_gbq(query)
 
     def get_common_columns(self, table1:str, table2:str) -> list:
         columns_table_1 = self.get_columns(table1)
