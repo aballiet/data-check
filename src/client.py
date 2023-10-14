@@ -14,14 +14,17 @@ class BigQueryClient:
         table: bigquery.Table = client.get_table(table)
         return [field.name for field in table.schema]
 
-    def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
+    @staticmethod
+    @st.cache_data
+    def run_query_to_dataframe(query: str) -> pd.DataFrame:
         return read_gbq(query)
 
     def get_common_columns(self, table1:str, table2:str) -> list:
         columns_table_1 = self.get_columns(table1)
         columns_table_2 = self.get_columns(table2)
-        common_columns = set(columns_table_1).intersection(set(columns_table_2))
-        return list(common_columns)
+        common_columns = list(set(columns_table_1).intersection(set(columns_table_2)))
+        common_columns.sort()
+        return common_columns
 
     def query_table(self, table:str , columns: list[str]) -> pd.DataFrame:
         columns = ", ".join(columns)

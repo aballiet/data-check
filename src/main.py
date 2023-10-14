@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from client import BigQueryClient
 from data_processor import ComputeDiff
+from data_formatter import highlight_selected_text
 
 client = BigQueryClient()
 
@@ -78,12 +79,20 @@ if st.session_state.loaded_tables:
         df_diff = diff.format_common_value_ratios()
         st.write(display_results(df_diff))
 
-
-def update_third_step():
-    st.session_state.column_to_display = st.session_state.temp_column_to_display
-
 if st.session_state.loaded_dataframes:
     with st.form(key='third_step'):
-        st.selectbox('Select column to display full-diff:', list(st.session_state.columns_to_compare), key='temp_column_to_display')
-        st.dataframe(diff.display_diff_rows(st.session_state.temp_column_to_display))
-        submit = st.form_submit_button(label='OK', on_click=update_first_step)
+        # st.selectbox('Select column to display full-diff:', list(st.session_state.columns_to_compare), key='temp_column_to_display')
+        # st.dataframe(diff.display_diff_rows(st.session_state.temp_column_to_display))
+
+        df = pd.DataFrame({'item_name': ['Chocolate is the best', 'We love Chocolate',
+                                        'I would pay money for Chocolate', 'Biscuit',
+                                        'Biscuit', 'Biscuit',
+                                        'IceCream', 'Dont love IceCream',
+                                        'IceCream'],
+                          'value': [90, 50, 86, 87, 42, 48,
+                                    68, 92, 102],
+                          'weight': [4, 2, 3, 5, 6, 5, 3, 7,
+                                     5]})
+
+        df["highlighted"] = df.apply(highlight_selected_text, axis=1)
+        st.markdown(df.to_html(escape=False),unsafe_allow_html=True)

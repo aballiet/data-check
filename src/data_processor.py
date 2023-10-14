@@ -41,7 +41,7 @@ class ComputeDiff():
 
     # Given two dataframes, a column value and a primary key, display the rows where the column value is different
     def display_diff_rows(self, column: str) -> pd.DataFrame:
-        common_rows = self.df1.astype(str).merge(self.df2.astype(str), on=[self.primary_key, column], how='inner')
+        common_rows = self.df1.astype(str).merge(self.df2.astype(str), on=[self.primary_key], how='inner', suffixes=('_x', '_y'))
         diff_rows = common_rows[common_rows[f"{column}_x"] != common_rows[f"{column}_y"]]
         return diff_rows
 
