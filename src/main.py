@@ -7,7 +7,7 @@ from data_formatter import highlight_selected_text
 from tools import run_multithreaded
 
 st.set_page_config(layout="wide")
-st.title('Perform Data Check on BigQuery Tables')
+st.title('data-diff homemade 🏠')
 
 if 'config_tables' not in st.session_state:
     st.session_state.config_tables = False
