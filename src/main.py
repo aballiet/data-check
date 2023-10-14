@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
-from client import BigQueryClient
+from client import get_common_columns, get_dataframes
 from data_processor import ComputeDiff
 from data_formatter import highlight_selected_text
 
-client = BigQueryClient()
-
+st.set_page_config(layout="wide")
 st.title('Perform Data Check on BigQuery Tables')
 
 if 'config_tables' not in st.session_state:
@@ -42,7 +41,7 @@ def update_second_step():
 if st.session_state.config_tables:
     with st.form(key='second_step'):
         st.write('Retrieving list of common columns...')
-        common_columns = client.get_common_columns(st.session_state.table1, st.session_state.table2)
+        common_columns = get_common_columns(st.session_state.table1, st.session_state.table2)
         st.selectbox('Select primary key:', list(common_columns), key='temp_primary_key')
         st.multiselect('Select columns to compare:', list(common_columns), key='temp_columns_to_compare')
         submit = st.form_submit_button(label='OK', on_click=update_second_step)
@@ -60,8 +59,7 @@ if st.session_state.loaded_tables:
 
         # Create dataframes from the BigQuery results
         st.write('Creating dataframes...')
-        df1 = client.query_table(st.session_state.table1, st.session_state.columns_to_compare + [st.session_state.primary_key])
-        df2 = client.query_table(st.session_state.table2, st.session_state.columns_to_compare + [st.session_state.primary_key])
+        df1, df2 = get_dataframes(st.session_state.table1, st.session_state.table2, st.session_state.columns_to_compare + [st.session_state.primary_key])
 
         diff = ComputeDiff(
             table1=st.session_state.table1,
