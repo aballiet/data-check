@@ -4,3 +4,4 @@ db-dtypes
 pandas
 pytest
 pandas-gbq
+tqdm
