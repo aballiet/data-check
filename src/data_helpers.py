@@ -1,4 +1,4 @@
-from client import get_columns, query_table, run_query_to_dataframe
+from client import get_columns, query_table, run_query_to_dataframe, get_table_schema
 from data_processor import compare_tables_primary_key_query, get_query_plain_diff_tables, query_ratio_common_values_per_column
 from tools import run_multithreaded
 from typing import List, Tuple
@@ -8,6 +8,11 @@ def get_table_columns(table1:str, table2:str) -> Tuple[List[str], List[str]]:
     jobs = [(get_columns, {"table": table1}), (get_columns, {"table": table2})]
     columns_table_1, columns_table_2 = run_multithreaded(jobs=jobs, max_workers=2)
     return columns_table_1, columns_table_2
+
+def get_table_schemas(table1:str, table2:str) -> Tuple[dict, dict]:
+    jobs = [(get_table_schema, {"table": table1}), (get_table_schema, {"table": table2})]
+    schema_table_1, schema_table_2 = run_multithreaded(jobs=jobs, max_workers=2)
+    return schema_table_1, schema_table_2
 
 def get_dataframes(table1:str, table2:str, columns: list[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
     jobs = [(query_table, {'table': table1, 'columns': columns}), (query_table, {'table': table2, 'columns': columns})]

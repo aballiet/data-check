@@ -1,4 +1,5 @@
 import pandas as pd
+from models.table import table_schema
 
 SUFFIX_DATASET_1 = "__1"
 SUFFIX_DATASET_2 = "__2"
@@ -58,8 +59,8 @@ class ComputeDiff():
         return df.sort_values(by="percentage_of_diff", ascending=False)
 
 
-def get_common_columns(columns1: list, columns2: list) -> list:
-    common_columns = list(set(columns1).intersection(set(columns2)))
+def get_common_columns(table_schema_1: table_schema, table_schema_2: table_schema) -> list:
+    common_columns = list(set(table_schema_1.columns_names).intersection(set(table_schema_2.columns_names)))
     common_columns.sort()
     return common_columns
 

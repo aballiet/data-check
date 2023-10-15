@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from data_processor import ComputeDiff, get_common_columns
 from data_formatter import highlight_selected_text
-from data_helpers import get_table_columns, run_query_compare_primary_keys, get_column_diff_ratios
+from data_helpers import get_table_schemas, run_query_compare_primary_keys, get_column_diff_ratios
 
 class DataDiff():
     def __init__(self) -> None:
@@ -62,9 +62,11 @@ class DataDiff():
         if st.session_state.config_tables:
             with st.form(key='second_step'):
                 st.write('Retrieving list of common columns...')
-                columns_table_1, columns_table_2 = get_table_columns(st.session_state.table1, st.session_state.table2)
-                common_columns = get_common_columns(columns_table_1, columns_table_2)
+                schema_table_1, schema_table_2 = get_table_schemas(st.session_state.table1, st.session_state.table2)
+                st.session_state.schema_table_1 = schema_table_1
+                st.session_state.schema_table_2 = schema_table_2
 
+                common_columns = get_common_columns(schema_table_1, schema_table_2)
                 st.session_state.common_columns = common_columns
 
                 st.selectbox('Select primary key:', common_columns, key='temp_primary_key')
