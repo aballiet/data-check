@@ -1,21 +1,28 @@
 import pandas as pd
-from data_check.data_processor import get_query_plain_diff_tables, query_ratio_common_values_per_column
+from data_check.data_processor import (
+    get_query_plain_diff_tables,
+    query_ratio_common_values_per_column,
+)
 from data_check.models.table import TableSchema, ColumnSchema
 
 
 def test_get_query_plain_diff_tables():
-
     result = get_query_plain_diff_tables(
         table1="table1",
         table2="table2",
-        common_table_schema=TableSchema(table_name="common", columns=[
-            ColumnSchema(name='B', field_type='INTEGER', mode='NULLABLE'),
-            ColumnSchema(name='C', field_type='STRING', mode='NULLABLE'),
-        ]),
-        primary_key='A'
+        common_table_schema=TableSchema(
+            table_name="common",
+            columns=[
+                ColumnSchema(name="B", field_type="INTEGER", mode="NULLABLE"),
+                ColumnSchema(name="C", field_type="STRING", mode="NULLABLE"),
+            ],
+        ),
+        primary_key="A",
     )
 
-    assert result == f"""
+    assert (
+        result
+        == f"""
     WITH
     inner_merged AS (
         SELECT
@@ -29,20 +36,27 @@ def test_get_query_plain_diff_tables():
     FROM inner_merged
     WHERE cast(B__1 as string) <> cast(B__2 as string) OR C__1 <> C__2
     """
+    )
+
 
 def test_query_ratio_common_values_per_column():
     result = query_ratio_common_values_per_column(
         table1="table1",
         table2="table2",
-        common_table_schema=TableSchema(table_name="common", columns=[
-            ColumnSchema(name='A', field_type='INTEGER', mode='NULLABLE'),
-            ColumnSchema(name='B', field_type='INTEGER', mode='NULLABLE'),
-            ColumnSchema(name='C', field_type='STRING', mode='NULLABLE'),
-        ]),
-        primary_key='A'
+        common_table_schema=TableSchema(
+            table_name="common",
+            columns=[
+                ColumnSchema(name="A", field_type="INTEGER", mode="NULLABLE"),
+                ColumnSchema(name="B", field_type="INTEGER", mode="NULLABLE"),
+                ColumnSchema(name="C", field_type="STRING", mode="NULLABLE"),
+            ],
+        ),
+        primary_key="A",
     )
 
-    assert result == f"""
+    assert (
+        result
+        == f"""
     WITH
     count_diff AS (
         SELECT
@@ -55,3 +69,4 @@ def test_query_ratio_common_values_per_column():
     SELECT A / count_common AS A, B / count_common AS B, C / count_common AS C
     FROM count_diff
     """
+    )
