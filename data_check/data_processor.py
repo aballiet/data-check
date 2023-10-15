@@ -1,5 +1,6 @@
 import pandas as pd
-from models.table import table_schema
+from typing import List, Mapping
+from models.table import table_schema, column_schema
 
 SUFFIX_DATASET_1 = "__1"
 SUFFIX_DATASET_2 = "__2"
@@ -59,13 +60,10 @@ class ComputeDiff():
         return df.sort_values(by="percentage_of_diff", ascending=False)
 
 
-def get_common_columns(table_schema_1: table_schema, table_schema_2: table_schema) -> list:
-    common_columns = list(set(table_schema_1.columns_names).intersection(set(table_schema_2.columns_names)))
-    common_columns.sort()
-    return common_columns
 
 # Create a query to compare two tables common and exlusive primary keys for two tables
 def compare_tables_primary_key_query(table1, table2, primary_key) -> str:
+    """Compare the primary keys of two tables"""
     return f"""
         SELECT COUNT(*) AS total_rows, COUNTIF(table1.{primary_key} != table2.{primary_key}) AS diff_rows
         FROM `{table1}` AS table1
@@ -74,7 +72,7 @@ def compare_tables_primary_key_query(table1, table2, primary_key) -> str:
     """
 
 def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], primary_key: str, sampling_rate: int = 100) -> str:
-    # Construct the dynamic SQL query
+    """Create a SQL query to get the rows where the columns values are different"""
     query = f"""
     WITH
     inner_merged AS (
@@ -99,8 +97,12 @@ def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], prim
     """
     return query
 
-def query_ratio_common_values_per_column(table1:str, table2:str, columns: list[str], primary_key: str, sampling_rate: int = 100):
-    # Create a SQL query to calculate the ratio of common values for each column
+def query_ratio_common_values_per_column(table1:str, table2:str, common_schema: table_schema, primary_key: str, sampling_rate: int = 100):
+    """Create a SQL query to get the ratio of common values for each column"""
+
+    cast_fields_1 = common_schema.get_query_cast_schema_as_string(prefix="table_1.")
+    cast_fields_2 = common_schema.get_query_cast_schema_as_string(prefix="table_2.")
+
     query = f"""
     WITH
     count_diff AS (
@@ -109,9 +111,9 @@ def query_ratio_common_values_per_column(table1:str, table2:str, columns: list[s
             , {', '.join(
                 [
                     (
-                        f"countif(CAST(table_1.{col} AS STRING) = CAST(table_2.{col} AS STRING)) AS {col}"
+                        f"countif({cast_fields_1[index]}) = {cast_fields_2[index]}) AS {common_schema.columns_names[index]}"
                     )
-                    for col in columns
+                    for index in range(len(cast_fields_1))
                 ]
             )}
         FROM `{table1}` AS table_1{ f" TABLESAMPLE SYSTEM ({sampling_rate} PERCENT)" if sampling_rate < 100 else "" }
@@ -124,7 +126,7 @@ def query_ratio_common_values_per_column(table1:str, table2:str, columns: list[s
                 (
                     f"{col} / count_common AS {col}"
                 )
-                for col in columns
+                for col in common_schema.columns_names
             ]
         )
     }
