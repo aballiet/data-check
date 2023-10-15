@@ -97,3 +97,36 @@ def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], prim
     WHERE {' OR '.join([f'{col}__1 <> {col}__2' for col in columns])}
     """
     return query
+
+def query_ratio_common_values_per_column(table1:str, table2:str, columns: list[str], primary_key: str, sampling_rate: int = 100):
+    # Create a SQL query to calculate the ratio of common values for each column
+    query = f"""
+    WITH
+    count_diff AS (
+        SELECT
+            count({primary_key}) as count_common
+            , {', '.join(
+                [
+                    (
+                        f"countif(CAST(table_1.{col} AS STRING) = CAST(table_2.{col} AS STRING)) AS {col}"
+                    )
+                    for col in columns
+                ]
+            )}
+        FROM `{table1}` AS table_1{ f" TABLESAMPLE SYSTEM ({sampling_rate} PERCENT)" if sampling_rate < 100 else "" }
+        INNER JOIN `{table2}` AS table_2
+            USING ({primary_key})
+    )
+    SELECT {
+        ', '.join(
+            [
+                (
+                    f"{col} / count_common AS {col}"
+                )
+                for col in columns
+            ]
+        )
+    }
+    FROM count_diff
+    """
+    return query

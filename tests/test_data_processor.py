@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from src.data_processor import ComputeDiff, SUFFIX_DATASET_1, SUFFIX_DATASET_2, get_query_plain_diff_tables
+from src.data_processor import ComputeDiff, SUFFIX_DATASET_1, SUFFIX_DATASET_2, get_query_plain_diff_tables, query_ratio_common_values_per_column
 
 def dummy_dataframe() -> pd.DataFrame:
     return pd.DataFrame({
@@ -71,4 +71,26 @@ def test_get_query_plain_diff_tables():
     SELECT *
     FROM inner_merged
     WHERE B__1 <> B__2 OR C__1 <> C__2
+    """
+
+def test_query_ratio_common_values_per_column():
+    result = query_ratio_common_values_per_column(
+        table1="table1",
+        table2="table2",
+        columns=['B', 'C'],
+        primary_key='A'
+    )
+
+    assert result == f"""
+    WITH
+    count_diff AS (
+        SELECT
+            count(A) as count_common
+            , countif(table_1.B = table_2.B) AS B, countif(table_1.C = table_2.C) AS C
+        FROM `table1` AS table_1
+        INNER JOIN `table2` AS table_2
+            USING (A)
+    )
+    SELECT B / count_common AS B, C / count_common AS C
+    FROM count_diff
     """
