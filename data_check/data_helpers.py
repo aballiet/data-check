@@ -1,5 +1,6 @@
 from client import get_columns, query_table, run_query_to_dataframe, get_table_schema
 from data_processor import compare_tables_primary_key_query, get_query_plain_diff_tables, query_ratio_common_values_per_column
+from data_formatter import convert_float_to_percentage
 from tools import run_multithreaded
 from typing import List, Tuple
 from models.table import TableSchema
@@ -42,11 +43,13 @@ def get_column_diff_ratios(table1:str, table2:str, primary_key: str, selected_co
     df.columns = ['column', 'percentage_common_values']
     df['percentage_diff_values'] = 1 - df['percentage_common_values']
     df.sort_values(by='percentage_diff_values', ascending=False, inplace=True)
+    convert_float_to_percentage(df, ['percentage_common_values', 'percentage_diff_values'])
     return df
 
-def get_plain_diff(table1:str, table2:str, primary_key: str, columns: list[str], sampling_rate: int) -> pd.DataFrame:
+def get_plain_diff(table1:str, table2:str, primary_key: str, selected_columns: List[str], common_table_schema: TableSchema, sampling_rate: int) -> pd.DataFrame:
     """Get the rows where the columns values are different"""
-    query = get_query_plain_diff_tables(table1, table2, columns, primary_key, sampling_rate)
+    filtered_columns = TableSchema(table_name="filtered_columns", columns=[common_table_schema.get_column(column) for column in selected_columns])
+    query = get_query_plain_diff_tables(table1, table2, common_table_schema=filtered_columns, primary_key=primary_key, sampling_rate=sampling_rate)
     df =  run_query_to_dataframe(query)
     return df
 

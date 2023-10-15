@@ -14,3 +14,9 @@ def highlight_diff(data, other, color='yellow'):
     attr = 'background-color: {}'.format(color)
     return pd.DataFrame(np.where(data.ne(other), attr, ''),
                         index=data.index, columns=data.columns)
+
+def convert_float_to_percentage(data: pd.DataFrame, columns):
+    """Convert float to percentage for a dataframe"""
+    for column in columns:
+        data[column] = pd.Series(["{0:.2f}%".format(val * 100) for val in data[column]], index = data.index)
+    return data

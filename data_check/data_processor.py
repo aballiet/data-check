@@ -70,8 +70,10 @@ def compare_tables_primary_key_query(table1, table2, primary_key) -> str:
         USING ({primary_key})
     """
 
-def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], primary_key: str, sampling_rate: int = 100) -> str:
+def get_query_plain_diff_tables(table1:str, table2:str, common_table_schema: TableSchema, primary_key: str, sampling_rate: int = 100) -> str:
     """Create a SQL query to get the rows where the columns values are different"""
+    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(prefix="", column_name_suffix="__1")
+    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(prefix="", column_name_suffix="__2")
     query = f"""
     WITH
     inner_merged AS (
@@ -83,7 +85,7 @@ def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], prim
                         f"table_1.{col} AS {col}__1"
                         f", table_2.{col} AS {col}__2"
                     )
-                    for col in columns
+                    for col in common_table_schema.columns_names
                 ]
             )}
         FROM `{table1}` AS table_1{ f" TABLESAMPLE SYSTEM ({sampling_rate} PERCENT)" if sampling_rate < 100 else "" }
@@ -92,8 +94,9 @@ def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], prim
     )
     SELECT *
     FROM inner_merged
-    WHERE {' OR '.join([f'{col}__1 <> {col}__2' for col in columns])}
+    WHERE {' OR '.join([f'{cast_fields_1[index]} <> {cast_fields_2[index]}' for index in range(len(common_table_schema.columns_names))])}
     """
+    print(query)
     return query
 
 def query_ratio_common_values_per_column(table1:str, table2:str, common_table_schema: TableSchema, primary_key: str, sampling_rate: int = 100):

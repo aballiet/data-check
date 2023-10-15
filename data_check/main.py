@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from data_processor import ComputeDiff
 from data_formatter import highlight_selected_text
-from data_helpers import get_table_schemas, run_query_compare_primary_keys, get_column_diff_ratios, get_common_schema
+from data_helpers import get_table_schemas, run_query_compare_primary_keys, get_column_diff_ratios, get_common_schema, get_plain_diff
 from models.table import TableSchema
 
 class DataDiff():
@@ -32,6 +32,12 @@ class DataDiff():
     @staticmethod
     def display_results(results: list) -> None:
         st.table(results)
+
+    @staticmethod
+    @st.cache_data(show_spinner=False)
+    def split_frame(input_df, rows):
+        df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
+        return df
 
     def update_first_step(self):
         st.session_state.table1 = st.session_state.temp_table_1
@@ -93,23 +99,52 @@ class DataDiff():
                 button_check = st.form_submit_button(label='Show diff row-wise', on_click=self.update_third_step)
 
         if st.session_state.display_diff and st.session_state.column_to_display:
-            with st.form(key='fourth_step'):
-                st.write(f"Displaying rows where {st.session_state.column_to_display} is different...")
+            st.write(f"Displaying rows where {st.session_state.column_to_display} is different...")
 
-                # df = diff.display_diff_rows(st.session_state.column_to_display)
+            dataset = get_plain_diff(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key, selected_columns=[st.session_state.column_to_display], common_table_schema=st.session_state.common_table_schema, sampling_rate=st.session_state.sampling_rate)
 
-                df = pd.DataFrame({'item_name': ['Chocolate is the best', 'We love Chocolate',
-                                                'I would pay money for Chocolate', 'Biscuit',
-                                                'Biscuit', 'Biscuit',
-                                                'IceCream', 'Dont love IceCream',
-                                                'IceCream'],
-                                    'value': [90, 50, 86, 87, 42, 48,
-                                            68, 92, 102],
-                                    'weight': [4, 2, 3, 5, 6, 5, 3, 7,
-                                                5]})
+            top_menu = st.columns(3)
+            with top_menu[0]:
+                sort = st.radio("Sort Data", options=["Yes", "No"], horizontal=1, index=1)
+            if sort == "Yes":
+                with top_menu[1]:
+                    sort_field = st.selectbox("Sort By", options=dataset.columns)
+                with top_menu[2]:
+                    sort_direction = st.radio(
+                        "Direction", options=["⬆️", "⬇️"], horizontal=True
+                    )
+                dataset = dataset.sort_values(
+                    by=sort_field, ascending=sort_direction == "⬆️", ignore_index=True
+                )
+            pagination = st.container()
 
-                df["highlighted"] = df.apply(highlight_selected_text, axis=1)
-                st.markdown(df.to_html(escape=False),unsafe_allow_html=True)
+            bottom_menu = st.columns((4, 1, 1))
+            with bottom_menu[2]:
+                batch_size = st.selectbox("Page Size", options=[25, 50, 100])
+            with bottom_menu[1]:
+                total_pages = (
+                    int(len(dataset) / batch_size) if int(len(dataset) / batch_size) > 0 else 1
+                )
+                current_page = st.number_input(
+                    "Page", min_value=1, max_value=total_pages, step=1
+                )
+            with bottom_menu[0]:
+                st.markdown(f"Page **{current_page}** of **{total_pages}** ")
+
+            pages = self.split_frame(dataset, batch_size)
+            pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
+
+            # df = pd.DataFrame({'item_name': ['Chocolate is the best', 'We love Chocolate',
+            #                                 'I would pay money for Chocolate', 'Biscuit',
+            #                                 'Biscuit', 'Biscuit',
+            #                                 'IceCream', 'Dont love IceCream',
+            #                                 'IceCream'],
+            #                     'value': [90, 50, 86, 87, 42, 48,
+            #                             68, 92, 102],
+            #                     'weight': [4, 2, 3, 5, 6, 5, 3, 7,
+            #                                 5]})
+
+            # df["highlighted"] = df.apply(highlight_selected_text, axis=1)
 
 if __name__ == '__main__':
     dd = DataDiff()
