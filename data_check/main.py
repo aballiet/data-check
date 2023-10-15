@@ -60,7 +60,7 @@ class DataDiff():
         with st.form(key='first_step'):
             st.text_input('Table 1', value="gorgias-growth-production.dbt_activation.act_candu_ai_user_traits", key='temp_table_1')
             st.text_input('Table 2', value="gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits", key='temp_table_2')
-            st.slider("Data sampling", min_value=10, max_value=100, step=1, key="temp_sampling_rate")
+            st.slider("Data sampling", min_value=10, max_value=100, step=1, key="temp_sampling_rate", value=100)
             submit = st.form_submit_button(label='OK', on_click=self.update_first_step)
 
         if st.session_state.config_tables:
