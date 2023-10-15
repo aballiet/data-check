@@ -1,5 +1,5 @@
 import pandas as pd
-from data_processor import ComputeDiff, SUFFIX_DATASET_1, SUFFIX_DATASET_2, get_query_plain_diff_tables, query_ratio_common_values_per_column
+from data_check.data_processor import ComputeDiff, SUFFIX_DATASET_1, SUFFIX_DATASET_2, get_query_plain_diff_tables, query_ratio_common_values_per_column
 
 def dummy_dataframe() -> pd.DataFrame:
     return pd.DataFrame({
