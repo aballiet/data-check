@@ -1,13 +1,11 @@
 import streamlit as st
 import pandas as pd
-from data_processor import ComputeDiff
 from data_helpers import get_table_schemas, run_query_compare_primary_keys, get_column_diff_ratios, get_common_schema, get_plain_diff
 
 class DataDiff():
     def __init__(self) -> None:
         self.df1: pd.DataFrame = None
         self.df2: pd.DataFrame = None
-        self.diff: ComputeDiff = None
 
         self.primary_key: str = None
         self.columns_to_compare: str = None
