@@ -1,6 +1,7 @@
 import pandas as pd
 from pandas.io.formats.style import Styler
 import numpy as np
+import seaborn as sns
 
 def highlight_selected_text(row: dict):
     text = row["item_name"]
@@ -17,3 +18,11 @@ def highlight_diff(data, other, color='yellow'):
 
 def style_percentage(data: pd.DataFrame, columns) -> Styler:
     return data.style.format("{:.2%}", subset=columns)
+
+def style_gradient(data: pd.DataFrame, columns) -> Styler:
+    if isinstance(data, pd.DataFrame):
+        cmap = sns.color_palette("blend:white,red", as_cmap=True)
+        return data.style.background_gradient(cmap=cmap, subset=columns)
+    elif isinstance(data, Styler):
+        cmap = sns.color_palette("blend:white,red", as_cmap=True)
+        return data.background_gradient(cmap=cmap, subset=columns)

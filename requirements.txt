@@ -5,3 +5,4 @@ pandas
 pytest
 pandas-gbq
 tqdm
+seaborn
