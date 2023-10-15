@@ -2,7 +2,7 @@ import streamlit as st
 from google.cloud import bigquery
 import pandas as pd
 from pandas_gbq import read_gbq
-from models.table import table_schema, column_schema
+from models.table import TableSchema, ColumnSchema
 
 @st.cache_resource
 def init_client():
@@ -13,11 +13,11 @@ def get_columns(table: str) -> list:
     table: bigquery.Table = client.get_table(table)
     return [field.name for field in table.schema]
 
-def get_table_schema(table: str) -> table_schema:
+def get_table_schema(table: str) -> TableSchema:
     client = init_client()
     table: bigquery.Table = client.get_table(table)
-    columns = [column_schema(name=field.name, field_type=field.field_type) for field in table.schema]
-    return table_schema(table_name=table.table_id, columns=columns)
+    columns = [ColumnSchema(name=field.name, field_type=field.field_type) for field in table.schema]
+    return TableSchema(table_name=table.table_id, columns=columns)
 
 @st.cache_data
 def run_query_to_dataframe(query: str) -> pd.DataFrame:

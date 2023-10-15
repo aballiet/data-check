@@ -3,7 +3,7 @@ import pandas as pd
 from data_processor import ComputeDiff
 from data_formatter import highlight_selected_text
 from data_helpers import get_table_schemas, run_query_compare_primary_keys, get_column_diff_ratios, get_common_schema
-from models.table import table_schema
+from models.table import TableSchema
 
 class DataDiff():
     def __init__(self) -> None:
@@ -38,13 +38,14 @@ class DataDiff():
         st.session_state.table2 = st.session_state.temp_table_2
         st.session_state.sampling_rate = st.session_state.temp_sampling_rate
         st.session_state.config_tables = True
+        st.session_state.loaded_tables = False
 
     def update_second_step(self):
         st.session_state.primary_key = st.session_state.temp_primary_key
         st.session_state.is_select_all = st.session_state.temp_is_select_all
 
         if st.session_state.is_select_all:
-            st.session_state.columns_to_compare = st.session_state.common_columns
+            st.session_state.columns_to_compare = st.session_state.common_table_schema.columns_names
         else:
             st.session_state.columns_to_compare = st.session_state.temp_columns_to_compare
 
@@ -67,12 +68,12 @@ class DataDiff():
                 st.session_state.schema_table_1 = schema_table_1
                 st.session_state.schema_table_2 = schema_table_2
 
-                common_schema = get_common_schema(st.session_state.table1, st.session_state.table2)
-                st.session_state.common_schema = common_schema
+                common_table_schema = get_common_schema(st.session_state.table1, st.session_state.table2)
+                st.session_state.common_table_schema = common_table_schema
 
-                st.selectbox('Select primary key:', common_schema.columns_names, key='temp_primary_key')
+                st.selectbox('Select primary key:', common_table_schema.columns_names, key='temp_primary_key')
 
-                st.multiselect('Select columns to compare:', common_schema.columns_names, key='temp_columns_to_compare')
+                st.multiselect('Select columns to compare:', common_table_schema.columns_names, key='temp_columns_to_compare')
                 st.checkbox("Select all", key="temp_is_select_all")
 
                 submit = st.form_submit_button(label='OK', on_click=self.update_second_step)
@@ -85,10 +86,10 @@ class DataDiff():
                 st.dataframe(results_primary_keys)
 
                 st.write('Computing difference ratio...')
-                results_ratio_per_column = get_column_diff_ratios(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key, common_schema=st.session_state.common_schema, sampling_rate=st.session_state.sampling_rate)
+                results_ratio_per_column = get_column_diff_ratios(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key, selected_columns=st.session_state.columns_to_compare, common_table_schema=st.session_state.common_table_schema, sampling_rate=st.session_state.sampling_rate)
                 st.dataframe(results_ratio_per_column)
 
-                st.selectbox('Select column to display full-diff:', list(st.session_state.columns_to_compare), key='column_to_display')
+                st.selectbox('Select column to display full-diff:', st.session_state.columns_to_compare.column_names, key='column_to_display')
                 button_check = st.form_submit_button(label='Show diff row-wise', on_click=self.update_third_step)
 
         if st.session_state.display_diff and st.session_state.column_to_display:

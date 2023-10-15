@@ -26,24 +26,27 @@ class BigQueryDataType(str, Enum):
     BOOL = 'BOOL'
 
 @dataclass
-class column_schema():
+class ColumnSchema():
     name: str
     field_type: BigQueryDataType
 
 @dataclass
-class table_schema():
+class TableSchema():
     table_name: str
-    columns: list[column_schema]
+    columns: list[ColumnSchema]
 
     @property
     def columns_names(self) -> list:
         return [column.name for column in self.columns]
 
+    def get_column(self, column_name: str) -> ColumnSchema:
+        return next(column for column in self.columns if column.name == column_name)
+
     def get_common_column_names(self, other) -> List[str]:
         """Returns a list of common columns"""
         return list(set(self.columns_names).intersection(other.columns_names))
 
-    def get_common_columns(self, other) -> List[column_schema]:
+    def get_common_columns(self, other) -> List[ColumnSchema]:
         """Returns a mapping of common columns and their field types"""
         common_columns_names = self.get_common_column_names(other)
         return [column for column in self.columns if column.name in common_columns_names]
@@ -52,7 +55,7 @@ class table_schema():
         """Returns SQL to query table schema as string, need to support arrays and strucs so leverage array_to_string and struct_to_string"""
         query_parts = []
         for column in self.columns:
-            if column.field_type == BigQueryDataType.ARRAY:
+            if column.field_type in (BigQueryDataType.ARRAY, BigQueryDataType.RECORD):
                 query_parts.append(f"array_to_string({prefix}{column.name}, ',')")
             elif column.field_type == BigQueryDataType.STRUCT:
                 query_parts.append(f"struct_to_string({prefix}{column.name}, ',')")

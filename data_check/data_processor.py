@@ -1,6 +1,5 @@
 import pandas as pd
-from typing import List, Mapping
-from models.table import table_schema, column_schema
+from models.table import TableSchema
 
 SUFFIX_DATASET_1 = "__1"
 SUFFIX_DATASET_2 = "__2"
@@ -97,11 +96,11 @@ def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], prim
     """
     return query
 
-def query_ratio_common_values_per_column(table1:str, table2:str, common_schema: table_schema, primary_key: str, sampling_rate: int = 100):
+def query_ratio_common_values_per_column(table1:str, table2:str, common_table_schema: TableSchema, primary_key: str, sampling_rate: int = 100):
     """Create a SQL query to get the ratio of common values for each column"""
 
-    cast_fields_1 = common_schema.get_query_cast_schema_as_string(prefix="table_1.")
-    cast_fields_2 = common_schema.get_query_cast_schema_as_string(prefix="table_2.")
+    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(prefix="table_1.")
+    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(prefix="table_2.")
 
     query = f"""
     WITH
@@ -111,7 +110,7 @@ def query_ratio_common_values_per_column(table1:str, table2:str, common_schema: 
             , {', '.join(
                 [
                     (
-                        f"countif({cast_fields_1[index]}) = {cast_fields_2[index]}) AS {common_schema.columns_names[index]}"
+                        f"countif({cast_fields_1[index]} = {cast_fields_2[index]}) AS {common_table_schema.columns_names[index]}"
                     )
                     for index in range(len(cast_fields_1))
                 ]
@@ -126,10 +125,11 @@ def query_ratio_common_values_per_column(table1:str, table2:str, common_schema: 
                 (
                     f"{col} / count_common AS {col}"
                 )
-                for col in common_schema.columns_names
+                for col in common_table_schema.columns_names
             ]
         )
     }
     FROM count_diff
     """
+    print(query)
     return query
