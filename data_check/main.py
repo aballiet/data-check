@@ -89,7 +89,7 @@ class DataDiff():
                 results_ratio_per_column = get_column_diff_ratios(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key, selected_columns=st.session_state.columns_to_compare, common_table_schema=st.session_state.common_table_schema, sampling_rate=st.session_state.sampling_rate)
                 st.dataframe(results_ratio_per_column)
 
-                st.selectbox('Select column to display full-diff:', st.session_state.columns_to_compare.column_names, key='column_to_display')
+                st.selectbox('Select column to display full-diff:', st.session_state.columns_to_compare, key='column_to_display')
                 button_check = st.form_submit_button(label='Show diff row-wise', on_click=self.update_third_step)
 
         if st.session_state.display_diff and st.session_state.column_to_display:

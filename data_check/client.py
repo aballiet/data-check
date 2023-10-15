@@ -16,7 +16,7 @@ def get_columns(table: str) -> list:
 def get_table_schema(table: str) -> TableSchema:
     client = init_client()
     table: bigquery.Table = client.get_table(table)
-    columns = [ColumnSchema(name=field.name, field_type=field.field_type) for field in table.schema]
+    columns = [ColumnSchema(name=field.name, field_type=field.field_type, mode=field.mode) for field in table.schema]
     return TableSchema(table_name=table.table_id, columns=columns)
 
 @st.cache_data
