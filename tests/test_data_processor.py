@@ -54,7 +54,10 @@ def test_get_query_plain_diff_tables():
     result = get_query_plain_diff_tables(
         table1="table1",
         table2="table2",
-        columns=['B', 'C'],
+        common_table_schema=TableSchema(table_name="common", columns=[
+            ColumnSchema(name='B', field_type='INTEGER', mode='NULLABLE'),
+            ColumnSchema(name='C', field_type='STRING', mode='NULLABLE'),
+        ]),
         primary_key='A'
     )
 
@@ -70,7 +73,7 @@ def test_get_query_plain_diff_tables():
     )
     SELECT *
     FROM inner_merged
-    WHERE B__1 <> B__2 OR C__1 <> C__2
+    WHERE cast(B__1 as string) <> cast(B__2 as string) OR cast(C__1 as string) <> cast(C__2 as string)
     """
 
 def test_query_ratio_common_values_per_column():
@@ -78,9 +81,9 @@ def test_query_ratio_common_values_per_column():
         table1="table1",
         table2="table2",
         common_table_schema=TableSchema(table_name="common", columns=[
-            ColumnSchema(name='A', field_type='INTEGER'),
-            ColumnSchema(name='B', field_type='INTEGER'),
-            ColumnSchema(name='C', field_type='STRING'),
+            ColumnSchema(name='A', field_type='INTEGER', mode='NULLABLE'),
+            ColumnSchema(name='B', field_type='INTEGER', mode='NULLABLE'),
+            ColumnSchema(name='C', field_type='STRING', mode='NULLABLE'),
         ]),
         primary_key='A'
     )
