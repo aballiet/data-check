@@ -42,4 +42,16 @@ def test_query_ratio_common_values_per_column():
         primary_key='A'
     )
 
-    assert result
+    assert result == f"""
+    WITH
+    count_diff AS (
+        SELECT
+            count(A) as count_common
+            , countif(cast(table_1.A as string) = cast(table_2.A as string)) AS A, countif(cast(table_1.B as string) = cast(table_2.B as string)) AS B, countif(table_1.C = table_2.C) AS C
+        FROM `table1` AS table_1
+        INNER JOIN `table2` AS table_2
+            USING (A)
+    )
+    SELECT A / count_common AS A, B / count_common AS B, C / count_common AS C
+    FROM count_diff
+    """
