@@ -71,3 +71,29 @@ def compare_tables_primary_key_query(table1, table2, primary_key) -> str:
         FULL OUTER JOIN `{table2}` AS table2
         USING ({primary_key})
     """
+
+def get_query_plain_diff_tables(table1:str, table2:str, columns: list[str], primary_key: str, sampling_rate: int = 100) -> str:
+    # Construct the dynamic SQL query
+    query = f"""
+    WITH
+    inner_merged AS (
+        SELECT
+            table_1.{primary_key}
+            , {', '.join(
+                [
+                    (
+                        f"table_1.{col} AS {col}__1"
+                        f", table_2.{col} AS {col}__2"
+                    )
+                    for col in columns
+                ]
+            )}
+        FROM `{table1}` AS table_1{ f" TABLESAMPLE SYSTEM ({sampling_rate} PERCENT)" if sampling_rate < 100 else "" }
+        INNER JOIN `{table2}` AS table_2
+            USING ({primary_key})
+    )
+    SELECT *
+    FROM inner_merged
+    WHERE {' OR '.join([f'{col}__1 <> {col}__2' for col in columns])}
+    """
+    return query

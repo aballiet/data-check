@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from src.data_processor import ComputeDiff, SUFFIX_DATASET_1, SUFFIX_DATASET_2
+from src.data_processor import ComputeDiff, SUFFIX_DATASET_1, SUFFIX_DATASET_2, get_query_plain_diff_tables
 
 def dummy_dataframe() -> pd.DataFrame:
     return pd.DataFrame({
@@ -47,3 +47,28 @@ def test_display_diff_rows():
     # TO FIX : dtypes are now all string
     excepted_result = pd.DataFrame({'A': ['3'], f'B{SUFFIX_DATASET_1}': ['6'], f'C{SUFFIX_DATASET_1}': ['z'], f'B{SUFFIX_DATASET_2}': ['7'], f'C{SUFFIX_DATASET_2}': ['r']}, index=[2])
     pd.testing.assert_frame_equal(left=result, right=excepted_result)
+
+
+def test_get_query_plain_diff_tables():
+
+    result = get_query_plain_diff_tables(
+        table1="table1",
+        table2="table2",
+        columns=['B', 'C'],
+        primary_key='A'
+    )
+
+    assert result == f"""
+    WITH
+    inner_merged AS (
+        SELECT
+            table_1.A
+            , table_1.B AS B__1, table_2.B AS B__2, table_1.C AS C__1, table_2.C AS C__2
+        FROM `table1` AS table_1
+        INNER JOIN `table2` AS table_2
+            USING (A)
+    )
+    SELECT *
+    FROM inner_merged
+    WHERE B__1 <> B__2 OR C__1 <> C__2
+    """
