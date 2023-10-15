@@ -7,14 +7,14 @@ import pandas as pd
 
 def get_table_columns(table1:str, table2:str) -> Tuple[List[str], List[str]]:
     """Get the columns of two tables"""
-    jobs = [(get_columns, {"table": table1}), (get_columns, {"table": table2})]
-    columns_table_1, columns_table_2 = run_multithreaded(jobs=jobs, max_workers=2)
+    columns_table_1 = get_columns(table=table1)
+    columns_table_2 = get_columns(table=table2)
     return columns_table_1, columns_table_2
 
 def get_table_schemas(table1:str, table2:str) -> Tuple[table_schema, table_schema]:
     """Get the schemas of two tables"""
-    jobs = [(get_table_schema, {"table": table1}), (get_table_schema, {"table": table2})]
-    schema_table_1, schema_table_2 = run_multithreaded(jobs=jobs, max_workers=2)
+    schema_table_1 = get_table_schema(table=table1)
+    schema_table_2 = get_table_schema(table=table2)
     return schema_table_1, schema_table_2
 
 def get_common_schema(table1:str, table2:str) -> table_schema:
