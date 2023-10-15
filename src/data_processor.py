@@ -1,5 +1,7 @@
 import pandas as pd
 
+SUFFIX_DATASET_1 = "__1"
+SUFFIX_DATASET_2 = "__2"
 class ComputeDiff():
     def __init__(self, table1: str, table2: str, df1: pd.DataFrame, df2: pd.DataFrame, primary_key: str) -> None:
         self.table1 = table1
@@ -41,8 +43,8 @@ class ComputeDiff():
 
     # Given two dataframes, a column value and a primary key, display the rows where the column value is different
     def display_diff_rows(self, column: str) -> pd.DataFrame:
-        common_rows = self.df1.astype(str).merge(self.df2.astype(str), on=[self.primary_key], how='inner', suffixes=('_x', '_y'))
-        diff_rows = common_rows[common_rows[f"{column}_x"] != common_rows[f"{column}_y"]]
+        common_rows = self.df1.astype(str).merge(self.df2.astype(str), on=[self.primary_key], how='inner', suffixes=(SUFFIX_DATASET_1, SUFFIX_DATASET_2))
+        diff_rows = common_rows[common_rows[f"{column}{SUFFIX_DATASET_1}"] != common_rows[f"{column}{SUFFIX_DATASET_2}"]]
         return diff_rows
 
     def format_common_value_ratios(self) -> pd.DataFrame:
