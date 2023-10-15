@@ -59,10 +59,17 @@ class TableSchema():
         """Returns SQL to query table schema as string, need to support arrays and strucs so leverage array_to_string and struct_to_string"""
         query_parts = []
         for column in self.columns:
-            if column.field_type in (BigQueryDataType.ARRAY, BigQueryDataType.RECORD) or column.mode == BigQueryDataMode.REPEATED:
+            if column.field_type == BigQueryDataType.ARRAY or column.mode == BigQueryDataMode.REPEATED:
                 query_parts.append(f"array_to_string({prefix}{column.name}, ',')")
+
+            elif column.field_type == BigQueryDataType.RECORD:
+                # For now we don't support nested structs
+                pass
+
             elif column.field_type == BigQueryDataType.STRUCT:
-                query_parts.append(f"struct_to_string({prefix}{column.name}, ',')")
+                # For now we don't support nested structs
+                pass
+
             else:
                 query_parts.append(f"cast({prefix}{column.name} as string)")
         return query_parts

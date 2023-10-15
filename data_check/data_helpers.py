@@ -13,8 +13,12 @@ def get_table_columns(table1:str, table2:str) -> Tuple[List[str], List[str]]:
 
 def get_table_schemas(table1:str, table2:str) -> Tuple[TableSchema, TableSchema]:
     """Get the schemas of two tables"""
-    schema_table_1 = get_table_schema(table=table1)
-    schema_table_2 = get_table_schema(table=table2)
+    schema_table_1, unsupported_fields1 = get_table_schema(table=table1)
+    schema_table_2, unsupported_fields2 = get_table_schema(table=table2)
+
+    if unsupported_fields1 or unsupported_fields2:
+        import streamlit as st
+        st.warning(f"Unsupported RECORD fields: table 1: {unsupported_fields1} / table 2: {unsupported_fields2}, cannot be selected")
     return schema_table_1, schema_table_2
 
 def get_common_schema(table1:str, table2:str) -> TableSchema:
