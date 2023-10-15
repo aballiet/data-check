@@ -36,7 +36,7 @@ def get_table_schema(table: str) -> Tuple[TableSchema, list[str]]:
     return TableSchema(table_name=table.table_id, columns=columns), unsupported_columns
 
 
-@st.cache_data
+@st.cache_data(ttl=600)
 def run_query_to_dataframe(query: str) -> pd.DataFrame:
     return read_gbq(query)
 
