@@ -11,10 +11,21 @@ def compare_tables_primary_key_query(table1, table2, primary_key) -> str:
         USING ({primary_key})
     """
 
-def get_query_plain_diff_tables(table1:str, table2:str, common_table_schema: TableSchema, primary_key: str, sampling_rate: int = 100) -> str:
+
+def get_query_plain_diff_tables(
+    table1: str,
+    table2: str,
+    common_table_schema: TableSchema,
+    primary_key: str,
+    sampling_rate: int = 100,
+) -> str:
     """Create a SQL query to get the rows where the columns values are different"""
-    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(prefix="", column_name_suffix="__1")
-    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(prefix="", column_name_suffix="__2")
+    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
+        prefix="", column_name_suffix="__1"
+    )
+    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(
+        prefix="", column_name_suffix="__2"
+    )
     query = f"""
     WITH
     inner_merged AS (
@@ -40,11 +51,22 @@ def get_query_plain_diff_tables(table1:str, table2:str, common_table_schema: Tab
     print(query)
     return query
 
-def query_ratio_common_values_per_column(table1:str, table2:str, common_table_schema: TableSchema, primary_key: str, sampling_rate: int = 100):
+
+def query_ratio_common_values_per_column(
+    table1: str,
+    table2: str,
+    common_table_schema: TableSchema,
+    primary_key: str,
+    sampling_rate: int = 100,
+):
     """Create a SQL query to get the ratio of common values for each column"""
 
-    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(prefix="table_1.")
-    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(prefix="table_2.")
+    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
+        prefix="table_1."
+    )
+    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(
+        prefix="table_2."
+    )
 
     query = f"""
     WITH

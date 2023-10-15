@@ -2,6 +2,7 @@ from streamlit.runtime.scriptrunner import add_script_run_ctx
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Tuple
 
+
 # Run a list of jobs in parallel using multithreading. We want to be able to pass dedicated arguments to each job.
 def run_multithreaded(jobs: List[Tuple[Callable, Tuple]], max_workers: int) -> List:
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
