@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
-from typing import List, Tuple
-from client import get_columns, query_table
 from data_processor import ComputeDiff, get_common_columns
 from data_formatter import highlight_selected_text
-from tools import run_multithreaded
+from data_helpers import get_table_columns, get_dataframes, run_query_compare_primary_keys
 
 st.set_page_config(layout="wide")
 st.title('data-diff homemade 🏠')
@@ -24,15 +22,6 @@ df2 = None
 primary_key = None
 columns_to_compare = None
 
-def get_table_columns(table1:str, table2:str) -> Tuple[List[str], List[str]]:
-    jobs = [(get_columns, {"table": table1}), (get_columns, {"table": table2})]
-    columns_table_1, columns_table_2 = run_multithreaded(jobs=jobs, max_workers=2)
-    return columns_table_1, columns_table_2
-
-def get_dataframes(table1:str, table2:str, columns: list[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    jobs = [(query_table, {'table': table1, 'columns': columns}), (query_table, {'table': table2, 'columns': columns})]
-    df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
-    return df1, df2
 
 def update_first_step():
     st.session_state.table1 = st.session_state.temp_table_1
@@ -66,13 +55,17 @@ if st.session_state.loaded_tables:
     if st.button('Compare Data'):
 
         # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
-        # results = client.run_query(compare_tables_primary_key_query(st.session_state.table1, st.session_state.table2, st.session_state.primary_key))
-        # st.write(display_results(results))
+        st.write('Analyzing primary keys...')
+        results = run_query_compare_primary_keys(st.session_state.table1, st.session_state.table2, st.session_state.primary_key)
+        st.dataframe(results)
 
         # Create dataframes from the BigQuery results
         st.write('Creating dataframes...')
         df1, df2 = get_dataframes(table1=st.session_state.table1, table2=st.session_state.table2, columns=st.session_state.columns_to_compare + [st.session_state.primary_key])
 
+        st.session_state.loaded_dataframes = True
+
+        # Compute the difference ratio between the two dataframes
         diff = ComputeDiff(
             table1=st.session_state.table1,
             table2=st.session_state.table2,
@@ -80,10 +73,6 @@ if st.session_state.loaded_tables:
             df2=df2,
             primary_key=st.session_state.primary_key
         )
-
-        st.session_state.loaded_dataframes = True
-
-        # Compute the difference ratio between the two dataframes
         st.write('Computing difference ratio...')
 
         df_diff = diff.format_common_value_ratios()
