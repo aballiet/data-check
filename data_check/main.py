@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 from data_processor import ComputeDiff
-from data_formatter import highlight_selected_text
 from data_helpers import get_table_schemas, run_query_compare_primary_keys, get_column_diff_ratios, get_common_schema, get_plain_diff
-from models.table import TableSchema
 
 class DataDiff():
     def __init__(self) -> None:
@@ -133,18 +131,6 @@ class DataDiff():
 
             pages = self.split_frame(dataset, batch_size)
             pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
-
-            # df = pd.DataFrame({'item_name': ['Chocolate is the best', 'We love Chocolate',
-            #                                 'I would pay money for Chocolate', 'Biscuit',
-            #                                 'Biscuit', 'Biscuit',
-            #                                 'IceCream', 'Dont love IceCream',
-            #                                 'IceCream'],
-            #                     'value': [90, 50, 86, 87, 42, 48,
-            #                             68, 92, 102],
-            #                     'weight': [4, 2, 3, 5, 6, 5, 3, 7,
-            #                                 5]})
-
-            # df["highlighted"] = df.apply(highlight_selected_text, axis=1)
 
 if __name__ == '__main__':
     dd = DataDiff()
