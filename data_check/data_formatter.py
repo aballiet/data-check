@@ -29,14 +29,19 @@ def style_gradient(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:
 
 
 # Define a custom styling function
-def highlight_diff(row, columns: List[str]):
-    styles = [''] * len(row)
+def highlight_diff(x, columns: List[str]):
+    c1 = 'background-color: #fc9fba'
+
+    #empty DataFrame of styles
+    df1 = pd.DataFrame('', index=x.index, columns=x.columns)
+
     for column in columns:
-        if row[f"{column}__1"] != row[f"{column}__2"]:
-            styles = ['background-color: #ffcccc'] * len(row)
-    return styles
+        df1.loc[(x[column + '__1'] != x[column + '__2']), column + '__1'] = c1
+        df1.loc[(x[column + '__1'] != x[column + '__2']), column + '__2'] = c1
+
+    return df1
 
 def highlight_diff_dataset(data: pd.DataFrame, columns: str) -> Styler:
     # Apply the styling function
-    styled_df = data.style.apply(highlight_diff, columns=columns, axis=1)
+    styled_df = data.style.apply(highlight_diff, columns=columns, axis=None)
     return styled_df

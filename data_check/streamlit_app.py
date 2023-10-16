@@ -206,9 +206,9 @@ class DataDiff:
                     st.markdown(f"Page **{current_page}** of **{total_pages}** ")
 
                 pages = self.split_frame(dataset, batch_size)
-                pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
+                # pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
 
-                # pagination.dataframe(data=highlight_diff_dataset(pages[current_page - 1], columns=columns_to_display), use_container_width=True)
+                pagination.dataframe(data=highlight_diff_dataset(pages[current_page - 1], columns=columns_to_display), use_container_width=True)
 
 
 if __name__ == "__main__":
