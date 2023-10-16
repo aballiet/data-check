@@ -50,6 +50,13 @@ def get_dataframes(
     df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
     return df1, df2
 
+def parse_strucutred_data(data: pd.DataFrame, keys: str, column: str = "values") -> pd.DataFrame:
+    """Parse the structured data"""
+    data = data.copy()
+    for key in keys:
+        data[key] = data[column].apply(lambda x: x[key])
+    data.drop(columns=[column], inplace=True)
+    return data
 
 def get_column_diff_ratios(
     table1: str,
@@ -73,11 +80,13 @@ def get_column_diff_ratios(
     )
     df = run_query_to_dataframe(query)
     df = df.transpose().reset_index()
-    df.columns = ["column", "percentage_common_values"]
-    df["percentage_diff_values"] = 1 - df["percentage_common_values"]
-    df.sort_values(by="percentage_diff_values", ascending=False, inplace=True)
+    df.columns = ["column", "values"]
+
+    df = parse_strucutred_data(df, keys=["ratio_not_null", "ratio_not_equal"])
+    df["percentage_diff_values"] = 1 - df["ratio_not_equal"]
+    df.sort_values(by=["percentage_diff_values", "ratio_not_null"], ascending=False, inplace=True)
     df = style_percentage(
-        df, columns=["percentage_diff_values", "percentage_common_values"]
+        df, columns=["percentage_diff_values"]
     )
     df = style_gradient(df, columns=["percentage_diff_values"])
     return df

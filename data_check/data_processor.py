@@ -76,7 +76,8 @@ def query_ratio_common_values_per_column(
             , {', '.join(
                 [
                     (
-                        f"countif({cast_fields_1[index]} = {cast_fields_2[index]}) AS {common_table_schema.columns_names[index]}"
+                        f"countif(coalesce({cast_fields_1[index]}, {cast_fields_2[index]}) is not null) AS {common_table_schema.columns_names[index]}_count_not_null"
+                        f", countif({cast_fields_1[index]} = {cast_fields_2[index]}) AS {common_table_schema.columns_names[index]}"
                     )
                     for index in range(len(cast_fields_1))
                 ]
@@ -89,7 +90,10 @@ def query_ratio_common_values_per_column(
         ', '.join(
             [
                 (
-                    f"{col} / count_common AS {col}"
+                    f"struct("
+                        f"SAFE_DIVIDE({col}_count_not_null, count_common) AS ratio_not_null"
+                        f", SAFE_DIVIDE({col}, {col}_count_not_null) AS ratio_not_equal"
+                    f") AS {col}"
                 )
                 for col in common_table_schema.columns_names
             ]
