@@ -50,7 +50,9 @@ def get_dataframes(
     return df1, df2
 
 
-def parse_strucutred_data(data: pd.DataFrame, keys: str, column: str = "values") -> pd.DataFrame:
+def parse_strucutred_data(
+    data: pd.DataFrame, keys: str, column: str = "values"
+) -> pd.DataFrame:
     """Parse the structured data"""
     data = data.copy()
     for key in keys:
@@ -85,7 +87,9 @@ def get_column_diff_ratios(
 
     df = parse_strucutred_data(df, keys=["ratio_not_null", "ratio_not_equal"])
     df["percentage_diff_values"] = 1 - df["ratio_not_equal"]
-    df.sort_values(by=["percentage_diff_values", "ratio_not_null"], ascending=False, inplace=True)
+    df.sort_values(
+        by=["percentage_diff_values", "ratio_not_null"], ascending=False, inplace=True
+    )
     return df
 
 

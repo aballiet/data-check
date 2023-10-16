@@ -13,6 +13,7 @@ def highlight_selected_text(row: dict):
         text = text.replace(k, f'<span style="background-color:#ddd;">{k}</span>')
     return text
 
+
 def style_percentage(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:
     if isinstance(data, pd.DataFrame):
         return data.style.format("{:.2%}", subset=columns)
@@ -20,7 +21,9 @@ def style_percentage(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:
         return data.format("{:.2%}", subset=columns)
 
 
-def style_gradient(data: Tuple[pd.DataFrame, Styler], columns, gradient_color: str = "white,red") -> Styler:
+def style_gradient(
+    data: Tuple[pd.DataFrame, Styler], columns, gradient_color: str = "white,red"
+) -> Styler:
     cmap = sns.color_palette(f"blend:{gradient_color}", as_cmap=True)
     if isinstance(data, pd.DataFrame):
         return data.style.background_gradient(cmap=cmap, subset=columns)
@@ -30,16 +33,17 @@ def style_gradient(data: Tuple[pd.DataFrame, Styler], columns, gradient_color: s
 
 # Define a custom styling function
 def highlight_diff(x, columns: List[str]):
-    c1 = 'background-color: #fc9fba'
+    c1 = "background-color: #fc9fba"
 
-    #empty DataFrame of styles
-    df1 = pd.DataFrame('', index=x.index, columns=x.columns)
+    # empty DataFrame of styles
+    df1 = pd.DataFrame("", index=x.index, columns=x.columns)
 
     for column in columns:
-        df1.loc[(x[column + '__1'] != x[column + '__2']), column + '__1'] = c1
-        df1.loc[(x[column + '__1'] != x[column + '__2']), column + '__2'] = c1
+        df1.loc[(x[column + "__1"] != x[column + "__2"]), column + "__1"] = c1
+        df1.loc[(x[column + "__1"] != x[column + "__2"]), column + "__2"] = c1
 
     return df1
+
 
 def highlight_diff_dataset(data: pd.DataFrame, columns: str) -> Styler:
     # Apply the styling function

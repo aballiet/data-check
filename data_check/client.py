@@ -7,6 +7,7 @@ from pandas_gbq import read_gbq
 from models.table import TableSchema, ColumnSchema
 from google.oauth2 import service_account
 
+
 @st.cache_resource
 def init_client():
     # Create API client from environment variables
