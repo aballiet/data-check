@@ -10,11 +10,6 @@ from google.oauth2 import service_account
 
 @st.cache_resource
 def init_client():
-    # Create API client from environment variables
-    client = bigquery.Client()
-    if client.get_service_account_email():
-        return client
-
     # Create API client from Streamlit Secret
     credentials = service_account.Credentials.from_service_account_info(
         st.secrets["gcp_service_account"]
