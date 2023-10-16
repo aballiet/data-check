@@ -1,8 +1,10 @@
 from client import get_columns, query_table, run_query_to_dataframe, get_table_schema
+from data_formatter import style_percentage
 from data_processor import (
-    compare_tables_primary_key_query,
+    get_query_insight_tables_primary_keys,
     get_query_plain_diff_tables,
     query_ratio_common_values_per_column,
+    get_query_exclusive_primary_keys
 )
 from tools import run_multithreaded
 from typing import List, Tuple
@@ -121,5 +123,18 @@ def run_query_compare_primary_keys(
     table1: str, table2: str, primary_key: str
 ) -> pd.DataFrame:
     """Compare the primary keys of two tables"""
-    query = compare_tables_primary_key_query(table1, table2, primary_key)
-    return run_query_to_dataframe(query)
+    query = get_query_insight_tables_primary_keys(table1, table2, primary_key)
+    df = run_query_to_dataframe(query)
+    return df
+
+
+def run_query_exclusive_primary_keys(
+    table1: str, table2: str, primary_key: str,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Get the rows where the primary keys are exclusive to one table"""
+    df_exclusive_table1 = run_query_to_dataframe(get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table1"))
+    df_exclusive_table1.set_index(primary_key, inplace=True)
+
+    df_exclusive_table2 = run_query_to_dataframe(get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table2"))
+    df_exclusive_table2.set_index(primary_key, inplace=True)
+    return df_exclusive_table1, df_exclusive_table2

@@ -6,6 +6,7 @@ from data_helpers import (
     get_column_diff_ratios,
     get_common_schema,
     get_plain_diff,
+    run_query_exclusive_primary_keys
 )
 
 
@@ -126,7 +127,17 @@ class DataDiff:
                 st.session_state.table2,
                 st.session_state.primary_key,
             )
-            st.dataframe(results_primary_keys)
+            st.dataframe(style_percentage(results_primary_keys, columns=["missing_primary_keys_ratio"]))
+
+            if results_primary_keys["missing_primary_keys_ratio"].iloc[0] > 0 and st.button("Display exclusive primary keys for each table"):
+                st.write("Displaying rows where primary keys are different...")
+                df_exlusive_table1, df_exlusive_table2 = run_query_exclusive_primary_keys(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key)
+
+                st.write("Exclusive to table 1 :")
+                st.dataframe(df_exlusive_table1)
+
+                st.write("Exclusive to table 2 :")
+                st.dataframe(df_exlusive_table2)
 
             st.write("Computing difference ratio...")
             results_ratio_per_column = get_column_diff_ratios(

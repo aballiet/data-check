@@ -2,14 +2,53 @@ from models.table import TableSchema
 
 
 # Create a query to compare two tables common and exlusive primary keys for two tables
-def compare_tables_primary_key_query(table1, table2, primary_key) -> str:
+def get_query_insight_tables_primary_keys(table1: str, table2: str, primary_key: str) -> str:
     """Compare the primary keys of two tables"""
-    return f"""
-        select count(*) as total_rows, countif(table1.{primary_key} != table2.{primary_key}) as diff_rows
-        from `{table1}` as table1
-        full outer join `{table2}` as table2
-        using ({primary_key})
+    query = f"""
+        with
+
+        agg_diff_keys as (
+            select
+                count(*) as total_rows
+                , countif(table2.{primary_key} is null) as missing_primary_key_in_table2
+                , countif(table1.{primary_key} is null) as missing_primary_key_in_table1
+            from `{table1}` as table1
+            full outer join `{table2}` as table2
+            using ({primary_key})
+        )
+
+        select
+            total_rows
+            , missing_primary_key_in_table2
+            , missing_primary_key_in_table1
+            , safe_divide(missing_primary_key_in_table2 + missing_primary_key_in_table1, total_rows) as missing_primary_keys_ratio
+        from agg_diff_keys
     """
+    print(query)
+    return query
+
+
+def get_query_exclusive_primary_keys(table1: str, table2: str, primary_key: str, exclusive_to: str) -> str:
+    query = None
+    if exclusive_to == "table1":
+        query = f"""
+        select
+            table1.*
+        from `{table1}` as table1
+        left join `{table2}` as table2 using ({primary_key})
+        where table2.{primary_key} is null
+        """
+
+    else:
+        query = f"""
+        select
+            table2.*
+        from `{table2}` as table2
+        left join `{table1}` as table1 using ({primary_key})
+        where table1.{primary_key} is null
+        """
+    print(query)
+    return query
 
 
 def get_query_plain_diff_tables(
