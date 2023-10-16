@@ -4,7 +4,7 @@ from data_processor import (
     get_query_plain_diff_tables,
     query_ratio_common_values_per_column,
 )
-from data_formatter import style_percentage, style_gradient
+from data_formatter import style_percentage, style_gradient, highlight_diff_dataset
 from tools import run_multithreaded
 from typing import List, Tuple
 from models.table import TableSchema

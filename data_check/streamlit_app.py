@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from pandas.io.formats.style import Styler
-from data_formatter import style_gradient, style_percentage
+from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
 from data_helpers import (
     get_table_schemas,
     run_query_compare_primary_keys,
@@ -40,7 +40,7 @@ class DataDiff:
 
     @staticmethod
     @st.cache_data(show_spinner=False)
-    def split_frame(input_df, rows):
+    def split_frame(input_df, rows) -> pd.DataFrame:
         df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
         return df
 
@@ -65,11 +65,6 @@ class DataDiff:
             )
 
         st.session_state.loaded_tables = True
-
-    def update_third_step(self):
-        st.session_state.display_diff = True
-        st.session_state.selected_rows = st.session_state.temp_df_with_selections[st.session_state.temp_df_with_selections.Select]
-
 
     def window(self):
         with st.form(key="first_step"):
@@ -125,100 +120,95 @@ class DataDiff:
                 )
 
         if st.session_state.loaded_tables:
-            with st.form(key="third_step"):
-                # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
-                st.write("Analyzing primary keys...")
-                results_primary_keys = run_query_compare_primary_keys(
-                    st.session_state.table1,
-                    st.session_state.table2,
-                    st.session_state.primary_key,
-                )
-                st.dataframe(results_primary_keys)
-
-                st.write("Computing difference ratio...")
-                results_ratio_per_column = get_column_diff_ratios(
-                    table1=st.session_state.table1,
-                    table2=st.session_state.table2,
-                    primary_key=st.session_state.primary_key,
-                    selected_columns=st.session_state.columns_to_compare,
-                    common_table_schema=st.session_state.common_table_schema,
-                    sampling_rate=st.session_state.sampling_rate,
-                )
-
-                origin_columns = results_ratio_per_column.columns
-
-                results_ratio_per_column.insert(0, "Select", False)
-                df_with_selections = style_percentage(
-                    results_ratio_per_column, columns=["percentage_diff_values"]
-                )
-                df_with_selections = style_gradient(df_with_selections, columns=["percentage_diff_values"])
-
-                # Get dataframe row-selections from user with st.data_editor
-                edited_df = st.data_editor(
-                    data=df_with_selections,
-                    hide_index=True,
-                    column_config={"Select": st.column_config.CheckboxColumn(required=True)},
-                    disabled=origin_columns,
-                )
-                st.session_state.temp_df_with_selections = edited_df
-
-                button_check = st.form_submit_button(
-                    label="Show row diff for selected column(s)", on_click=self.update_third_step
-                )
-
-        if st.session_state.display_diff and st.session_state.selected_rows is not None:
-            st.write(
-                f"Displaying rows where {st.session_state.columns_to_display} is different..."
+            # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
+            st.write("Analyzing primary keys...")
+            results_primary_keys = run_query_compare_primary_keys(
+                st.session_state.table1,
+                st.session_state.table2,
+                st.session_state.primary_key,
             )
+            st.dataframe(results_primary_keys)
 
-            # Filter the dataframe using the temporary column, then drop the column
-
-            columns_to_display = st.session_state.selected_rows.column.tolist()
-            st.write(columns_to_display)
-
-            dataset = get_plain_diff(
+            st.write("Computing difference ratio...")
+            results_ratio_per_column = get_column_diff_ratios(
                 table1=st.session_state.table1,
                 table2=st.session_state.table2,
                 primary_key=st.session_state.primary_key,
-                selected_columns=columns_to_display,
+                selected_columns=st.session_state.columns_to_compare,
                 common_table_schema=st.session_state.common_table_schema,
                 sampling_rate=st.session_state.sampling_rate,
             )
 
-            top_menu = st.columns(3)
-            with top_menu[0]:
-                sort = st.radio(
-                    "Sort Data", options=["Yes", "No"], horizontal=1, index=1
+            origin_columns = results_ratio_per_column.columns
+
+            results_ratio_per_column.insert(0, "Select", False)
+            df_with_selections = style_percentage(
+                results_ratio_per_column, columns=["percentage_diff_values"]
+            )
+            df_with_selections = style_gradient(df_with_selections, columns=["percentage_diff_values"])
+
+            # Get dataframe row-selections from user with st.data_editor
+            edited_df = st.data_editor(
+                data=df_with_selections,
+                hide_index=True,
+                column_config={"Select": st.column_config.CheckboxColumn(required=True)},
+                disabled=origin_columns,
+            )
+
+            df_selection = edited_df[edited_df.Select]
+
+            if not df_selection.empty:
+                columns_to_display = df_selection.column.tolist()
+
+                st.write(
+                    f"Displaying rows where {columns_to_display} is different..."
                 )
-            if sort == "Yes":
-                with top_menu[1]:
-                    sort_field = st.selectbox("Sort By", options=dataset.columns)
-                with top_menu[2]:
-                    sort_direction = st.radio(
-                        "Direction", options=["⬆️", "⬇️"], horizontal=True
+
+                dataset = get_plain_diff(
+                    table1=st.session_state.table1,
+                    table2=st.session_state.table2,
+                    primary_key=st.session_state.primary_key,
+                    selected_columns=columns_to_display,
+                    common_table_schema=st.session_state.common_table_schema,
+                    sampling_rate=st.session_state.sampling_rate,
+                )
+
+                top_menu = st.columns(3)
+                with top_menu[0]:
+                    sort = st.radio(
+                        "Sort Data", options=["Yes", "No"], horizontal=1, index=1
                     )
-                dataset = dataset.sort_values(
-                    by=sort_field, ascending=sort_direction == "⬆️", ignore_index=True
-                )
-            pagination = st.container()
+                if sort == "Yes":
+                    with top_menu[1]:
+                        sort_field = st.selectbox("Sort By", options=dataset.columns)
+                    with top_menu[2]:
+                        sort_direction = st.radio(
+                            "Direction", options=["⬆️", "⬇️"], horizontal=True
+                        )
+                    dataset = dataset.sort_values(
+                        by=sort_field, ascending=sort_direction == "⬆️", ignore_index=True
+                    )
+                pagination = st.container()
 
-            bottom_menu = st.columns((4, 1, 1))
-            with bottom_menu[2]:
-                batch_size = st.selectbox("Page Size", options=[25, 50, 100])
-            with bottom_menu[1]:
-                total_pages = (
-                    int(len(dataset) / batch_size)
-                    if int(len(dataset) / batch_size) > 0
-                    else 1
-                )
-                current_page = st.number_input(
-                    "Page", min_value=1, max_value=total_pages, step=1
-                )
-            with bottom_menu[0]:
-                st.markdown(f"Page **{current_page}** of **{total_pages}** ")
+                bottom_menu = st.columns((4, 1, 1))
+                with bottom_menu[2]:
+                    batch_size = st.selectbox("Page Size", options=[25, 50, 100, 500])
+                with bottom_menu[1]:
+                    total_pages = (
+                        int(len(dataset) / batch_size)
+                        if int(len(dataset) / batch_size) > 0
+                        else 1
+                    )
+                    current_page = st.number_input(
+                        "Page", min_value=1, max_value=total_pages, step=1
+                    )
+                with bottom_menu[0]:
+                    st.markdown(f"Page **{current_page}** of **{total_pages}** ")
 
-            pages = self.split_frame(dataset, batch_size)
-            pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
+                pages = self.split_frame(dataset, batch_size)
+                pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
+
+                # pagination.dataframe(data=highlight_diff_dataset(pages[current_page - 1], columns=columns_to_display), use_container_width=True)
 
 
 if __name__ == "__main__":
