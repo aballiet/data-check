@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from pandas.io.formats.style import Styler
+from data_formatter import style_gradient, style_percentage
 from data_helpers import (
     get_table_schemas,
     run_query_compare_primary_keys,
@@ -66,6 +68,8 @@ class DataDiff:
 
     def update_third_step(self):
         st.session_state.display_diff = True
+        st.session_state.selected_rows = st.session_state.temp_df_with_selections[st.session_state.temp_df_with_selections.Select]
+
 
     def window(self):
         with st.form(key="first_step"):
@@ -140,27 +144,43 @@ class DataDiff:
                     common_table_schema=st.session_state.common_table_schema,
                     sampling_rate=st.session_state.sampling_rate,
                 )
-                st.dataframe(results_ratio_per_column)
 
-                st.multiselect(
-                    "Select columns to display full-diff:",
-                    st.session_state.columns_to_compare,
-                    key="columns_to_display",
+                origin_columns = results_ratio_per_column.columns
+
+                results_ratio_per_column.insert(0, "Select", False)
+                df_with_selections = style_percentage(
+                    results_ratio_per_column, columns=["percentage_diff_values"]
                 )
+                df_with_selections = style_gradient(df_with_selections, columns=["percentage_diff_values"])
+
+                # Get dataframe row-selections from user with st.data_editor
+                edited_df = st.data_editor(
+                    data=df_with_selections,
+                    hide_index=True,
+                    column_config={"Select": st.column_config.CheckboxColumn(required=True)},
+                    disabled=origin_columns,
+                )
+                st.session_state.temp_df_with_selections = edited_df
+
                 button_check = st.form_submit_button(
-                    label="Show diff row-wise", on_click=self.update_third_step
+                    label="Show row diff for selected column(s)", on_click=self.update_third_step
                 )
 
-        if st.session_state.display_diff and st.session_state.columns_to_display:
+        if st.session_state.display_diff and st.session_state.selected_rows is not None:
             st.write(
                 f"Displaying rows where {st.session_state.columns_to_display} is different..."
             )
+
+            # Filter the dataframe using the temporary column, then drop the column
+
+            columns_to_display = st.session_state.selected_rows.column.tolist()
+            st.write(columns_to_display)
 
             dataset = get_plain_diff(
                 table1=st.session_state.table1,
                 table2=st.session_state.table2,
                 primary_key=st.session_state.primary_key,
-                selected_columns=st.session_state.columns_to_display,
+                selected_columns=columns_to_display,
                 common_table_schema=st.session_state.common_table_schema,
                 sampling_rate=st.session_state.sampling_rate,
             )
