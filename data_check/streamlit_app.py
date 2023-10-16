@@ -146,6 +146,7 @@ class DataDiff:
                 results_ratio_per_column, columns=["percentage_diff_values"]
             )
             df_with_selections = style_gradient(df_with_selections, columns=["percentage_diff_values"])
+            df_with_selections = style_gradient(df_with_selections, columns=["ratio_not_null"], gradient_color="white,blue")
 
             # Get dataframe row-selections from user with st.data_editor
             edited_df = st.data_editor(

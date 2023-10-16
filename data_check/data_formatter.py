@@ -20,8 +20,8 @@ def style_percentage(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:
         return data.format("{:.2%}", subset=columns)
 
 
-def style_gradient(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:
-    cmap = sns.color_palette("blend:white,red", as_cmap=True)
+def style_gradient(data: Tuple[pd.DataFrame, Styler], columns, gradient_color: str = "white,red") -> Styler:
+    cmap = sns.color_palette(f"blend:{gradient_color}", as_cmap=True)
     if isinstance(data, pd.DataFrame):
         return data.style.background_gradient(cmap=cmap, subset=columns)
     elif isinstance(data, Styler):
