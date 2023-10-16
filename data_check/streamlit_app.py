@@ -29,8 +29,8 @@ class DataDiff:
         if "display_diff" not in st.session_state:
             st.session_state.display_diff = False
 
-        if "column_to_display" not in st.session_state:
-            st.session_state.column_to_display = None
+        if "columns_to_display" not in st.session_state:
+            st.session_state.columns_to_display = None
 
     @staticmethod
     def display_results(results: list) -> None:
@@ -142,25 +142,25 @@ class DataDiff:
                 )
                 st.dataframe(results_ratio_per_column)
 
-                st.selectbox(
-                    "Select column to display full-diff:",
+                st.multiselect(
+                    "Select columns to display full-diff:",
                     st.session_state.columns_to_compare,
-                    key="column_to_display",
+                    key="columns_to_display",
                 )
                 button_check = st.form_submit_button(
                     label="Show diff row-wise", on_click=self.update_third_step
                 )
 
-        if st.session_state.display_diff and st.session_state.column_to_display:
+        if st.session_state.display_diff and st.session_state.columns_to_display:
             st.write(
-                f"Displaying rows where {st.session_state.column_to_display} is different..."
+                f"Displaying rows where {st.session_state.columns_to_display} is different..."
             )
 
             dataset = get_plain_diff(
                 table1=st.session_state.table1,
                 table2=st.session_state.table2,
                 primary_key=st.session_state.primary_key,
-                selected_columns=[st.session_state.column_to_display],
+                selected_columns=st.session_state.columns_to_display,
                 common_table_schema=st.session_state.common_table_schema,
                 sampling_rate=st.session_state.sampling_rate,
             )
