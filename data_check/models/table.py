@@ -78,11 +78,7 @@ class TableSchema:
                 or column.mode == BigQueryDataMode.REPEATED
             ):
                 query_parts.append(
-                    f"""
-                    array_to_string(
-                        (select array_agg(distinct x order by x asc) FROM UNNEST({prefix}{column.name}{column_name_suffix}) AS x), ','
-                    )
-                    """
+                    f"array_to_string((select array_agg(distinct x order by x asc) FROM UNNEST({prefix}{column.name}{column_name_suffix}) AS x), ',')"
                 )
 
             elif column.field_type == BigQueryDataType.RECORD:
