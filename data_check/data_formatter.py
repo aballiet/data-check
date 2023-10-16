@@ -1,17 +1,7 @@
 import pandas as pd
-import streamlit as st
 from pandas.io.formats.style import Styler
 from typing import Tuple, List
-import numpy as np
 import seaborn as sns
-
-
-def highlight_selected_text(row: dict):
-    text = row["item_name"]
-    bold = ["Chocolate"]
-    for k in bold:
-        text = text.replace(k, f'<span style="background-color:#ddd;">{k}</span>')
-    return text
 
 
 def style_percentage(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:

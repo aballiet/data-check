@@ -1,4 +1,3 @@
-import pandas as pd
 from data_check.data_processor import (
     get_query_plain_diff_tables,
     query_ratio_common_values_per_column,
@@ -23,18 +22,18 @@ def test_get_query_plain_diff_tables():
     assert (
         result
         == f"""
-    WITH
-    inner_merged AS (
-        SELECT
+    with
+    inner_merged as (
+        select
             table_1.A
-            , table_1.B AS B__1, table_2.B AS B__2, table_1.C AS C__1, table_2.C AS C__2
-        FROM `table1` AS table_1
-        INNER JOIN `table2` AS table_2
-            USING (A)
+            , table_1.B as B__1, table_2.B as B__2, table_1.C as C__1, table_2.C as C__2
+        from `table1` as table_1
+        inner join `table2` as table_2
+            using (A)
     )
-    SELECT *
-    FROM inner_merged
-    WHERE cast(B__1 as string) <> cast(B__2 as string) OR C__1 <> C__2
+    select *
+    from inner_merged
+    where cast(B__1 as string) <> cast(B__2 as string) or C__1 <> C__2
     """
     )
 
@@ -57,16 +56,16 @@ def test_query_ratio_common_values_per_column():
     assert (
         result
         == f"""
-    WITH
-    count_diff AS (
-        SELECT
+    with
+    count_diff as (
+        select
             count(A) as count_common
-            , countif(cast(table_1.A as string) = cast(table_2.A as string)) AS A, countif(cast(table_1.B as string) = cast(table_2.B as string)) AS B, countif(table_1.C = table_2.C) AS C
-        FROM `table1` AS table_1
-        INNER JOIN `table2` AS table_2
-            USING (A)
+            , countif(coalesce(cast(table_1.A as string), cast(table_2.A as string)) is not null) AS A_count_not_null, countif(cast(table_1.A as string) = cast(table_2.A as string)) AS A, countif(coalesce(cast(table_1.B as string), cast(table_2.B as string)) is not null) AS B_count_not_null, countif(cast(table_1.B as string) = cast(table_2.B as string)) AS B, countif(coalesce(table_1.C, table_2.C) is not null) AS C_count_not_null, countif(table_1.C = table_2.C) AS C
+        from `table1` as table_1
+        inner join `table2` as table_2
+            using (A)
     )
-    SELECT A / count_common AS A, B / count_common AS B, C / count_common AS C
-    FROM count_diff
+    select struct(safe_divide(A_count_not_null, count_common) as ratio_not_null, safe_divide(A, A_count_not_null) as ratio_not_equal) AS A, struct(safe_divide(B_count_not_null, count_common) as ratio_not_null, safe_divide(B, B_count_not_null) as ratio_not_equal) AS B, struct(safe_divide(C_count_not_null, count_common) as ratio_not_null, safe_divide(C, C_count_not_null) as ratio_not_equal) AS C
+    from count_diff
     """
     )
