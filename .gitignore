@@ -1,6 +1,9 @@
 .venv
 .vscode
 
+# Streamlit secrets file
+*/*/secrets.toml
+
 # Standard Python ignore list
 *.py[cod]
 __pycache__/
