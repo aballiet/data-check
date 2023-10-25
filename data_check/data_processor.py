@@ -10,8 +10,8 @@ def get_query_insight_tables_primary_keys(table1: str, table2: str, primary_key:
         agg_diff_keys as (
             select
                 count(*) as total_rows
-                , countif(table2.{primary_key} is null) as missing_primary_key_in_table2
                 , countif(table1.{primary_key} is null) as missing_primary_key_in_table1
+                , countif(table2.{primary_key} is null) as missing_primary_key_in_table2
             from `{table1}` as table1
             full outer join `{table2}` as table2
             using ({primary_key})
@@ -19,8 +19,8 @@ def get_query_insight_tables_primary_keys(table1: str, table2: str, primary_key:
 
         select
             total_rows
-            , missing_primary_key_in_table2
             , missing_primary_key_in_table1
+            , missing_primary_key_in_table2
             , safe_divide(missing_primary_key_in_table2 + missing_primary_key_in_table1, total_rows) as missing_primary_keys_ratio
         from agg_diff_keys
     """
