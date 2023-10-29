@@ -21,17 +21,7 @@ class DataDiff:
         st.set_page_config(layout="wide")
         st.title("data-diff homemade 🏠")
 
-        if "config_tables" not in st.session_state:
-            st.session_state.config_tables = False
-
-        if "loaded_tables" not in st.session_state:
-            st.session_state.loaded_tables = False
-
-        if "display_diff" not in st.session_state:
-            st.session_state.display_diff = False
-
-        if "columns_to_display" not in st.session_state:
-            st.session_state.columns_to_display = None
+        self.init_from_query_params()
 
     @staticmethod
     def display_results(results: list) -> None:
@@ -43,17 +33,28 @@ class DataDiff:
         df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
         return df
 
-    def set_session_state_from_query_params(self, key: str, default_value: str) -> str:
+    def set_session_state_from_query_params(self, key: str, default_value: str, cast_as: str = None) -> str:
         if key not in st.session_state:
-            st.session_state[key] = (
-                st.experimental_get_query_params().get(key, [default_value])[0]
-            )
+            value_to_set = st.experimental_get_query_params().get(key, [default_value])[0]
+            if cast_as == "int":
+                st.session_state[key] = int(value_to_set)
+            elif cast_as == "list":
+                st.session_state[key] = value_to_set.split(",") if value_to_set else []
+            else:
+                st.session_state[key] = value_to_set
 
     def init_from_query_params(self):
         self.set_session_state_from_query_params("table1", "gorgias-growth-production.dbt_activation.act_candu_ai_user_traits")
         self.set_session_state_from_query_params("table2", "gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits")
-        self.set_session_state_from_query_params("sample_rate", "100")
+        self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
         self.set_session_state_from_query_params("primary_key", "user_id")
+
+        st.session_state.config_tables = st.experimental_get_query_params().get("table1", [None])[0] and st.experimental_get_query_params().get("table2", [None])[0]
+
+        self.set_session_state_from_query_params("columns_to_compare", None, cast_as="list")
+        self.set_session_state_from_query_params("is_select_all", "False")
+
+        st.session_state.loaded_tables = st.experimental_get_query_params().get("columns_to_compare", [None])[0] or st.experimental_get_query_params().get("is_select_all", [None])[0]
 
     def update_first_step(self):
         st.session_state.table1 = st.session_state.temp_table_1
@@ -61,7 +62,7 @@ class DataDiff:
         st.session_state.sampling_rate = st.session_state.temp_sampling_rate
 
         st.experimental_set_query_params(
-            sample_rate=st.session_state.sampling_rate,
+            sampling_rate=st.session_state.sampling_rate,
             table1=st.session_state.table1,
             table2=st.session_state.table2
             )
@@ -89,7 +90,7 @@ class DataDiff:
             max_value=100,
             step=1,
             key="temp_sampling_rate",
-            value=int(st.session_state["sample_rate"]),
+            value=st.session_state["sampling_rate"],
         )
 
         st.form_submit_button(label="OK", on_click=self.update_first_step)
@@ -107,6 +108,15 @@ class DataDiff:
                 st.session_state.temp_columns_to_compare
             )
 
+        st.experimental_set_query_params(
+            sampling_rate=st.session_state.sampling_rate,
+            table1=st.session_state.table1,
+            table2=st.session_state.table2,
+            primary_key=st.session_state.primary_key,
+            columns_to_compare=",".join(st.session_state.columns_to_compare),
+            select_all=st.session_state.is_select_all,
+        )
+
         st.session_state.loaded_tables = True
 
     def second_step(self):
@@ -118,18 +128,27 @@ class DataDiff:
         )
         st.session_state.common_table_schema = common_table_schema
 
+        primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
+
         st.selectbox(
             "Select primary key:",
             common_table_schema.columns_names,
             key="temp_primary_key",
+            index=primary_key_select_index
         )
 
         st.multiselect(
             "Select columns to compare:",
             common_table_schema.columns_names,
             key="temp_columns_to_compare",
+            default=st.session_state.columns_to_compare,
         )
-        st.checkbox("Select all", key="temp_is_select_all")
+
+        st.checkbox(
+            "Select all",
+            key="temp_is_select_all",
+            value=str(st.session_state.is_select_all).lower() == "true",
+        )
 
         st.form_submit_button(label="OK", on_click=self.update_second_step)
 
