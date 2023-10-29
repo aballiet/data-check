@@ -43,33 +43,55 @@ class DataDiff:
         df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
         return df
 
+    def set_session_state_from_query_params(self, key: str, default_value: str) -> str:
+        if key not in st.session_state:
+            st.session_state[key] = (
+                st.experimental_get_query_params().get(key, [default_value])[0]
+            )
+
+    def init_from_query_params(self):
+        self.set_session_state_from_query_params("table1", "gorgias-growth-production.dbt_activation.act_candu_ai_user_traits")
+        self.set_session_state_from_query_params("table2", "gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits")
+        self.set_session_state_from_query_params("sample_rate", "100")
+        self.set_session_state_from_query_params("primary_key", "user_id")
+
     def update_first_step(self):
         st.session_state.table1 = st.session_state.temp_table_1
         st.session_state.table2 = st.session_state.temp_table_2
         st.session_state.sampling_rate = st.session_state.temp_sampling_rate
+
+        st.experimental_set_query_params(
+            sample_rate=st.session_state.sampling_rate,
+            table1=st.session_state.table1,
+            table2=st.session_state.table2
+            )
+
         st.session_state.config_tables = True
         st.session_state.loaded_tables = False
 
     def first_step(self):
+
         """First step of the app: select tables and sampling rate"""
         st.text_input(
             "Table 1",
-            value="gorgias-growth-production.dbt_activation.act_candu_ai_user_traits",
+            value=st.session_state["table1"],
             key="temp_table_1",
         )
         st.text_input(
             "Table 2",
-            value="gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits",
+            value=st.session_state["table2"],
             key="temp_table_2",
         )
+
         st.slider(
             "Data sampling",
             min_value=10,
             max_value=100,
             step=1,
             key="temp_sampling_rate",
-            value=100,
+            value=int(st.session_state["sample_rate"]),
         )
+
         st.form_submit_button(label="OK", on_click=self.update_first_step)
 
     def update_second_step(self):
@@ -112,6 +134,9 @@ class DataDiff:
         st.form_submit_button(label="OK", on_click=self.update_second_step)
 
     def window(self):
+        # Parse query params from URL
+        self.init_from_query_params()
+
         with st.form(key="first_step"):
             self.first_step()
 
