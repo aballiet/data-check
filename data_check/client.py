@@ -7,6 +7,8 @@ from pandas_gbq import read_gbq
 from models.table import TableSchema, ColumnSchema
 from google.oauth2 import service_account
 
+USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
+
 @st.cache_resource
 def get_credentials():
     # Create API client from Streamlit Secret
@@ -17,6 +19,8 @@ def get_credentials():
 
 @st.cache_resource
 def init_client():
+    if not USE_STREAMLIT_SECRET:
+        return bigquery.Client()
     credentials = get_credentials()
     return bigquery.Client(credentials=credentials)
 
@@ -47,6 +51,9 @@ def get_table_schema(table: str) -> Tuple[TableSchema, list[str]]:
 
 @st.cache_data(ttl=600)
 def run_query_to_dataframe(query: str) -> pd.DataFrame:
+    if not USE_STREAMLIT_SECRET:
+        return read_gbq(query)
+
     credentials = get_credentials()
     return read_gbq(query, credentials=credentials)
 

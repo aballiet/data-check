@@ -1,27 +1,22 @@
-FROM python:3.8-slim
+FROM --platform=linux/amd64 python:3.9-slim
 
-RUN groupadd --gid 1000 appuser \
-    && useradd --uid 1000 --gid 1000 -ms /bin/bash appuser
-
-RUN pip3 install --no-cache-dir --upgrade \
-    pip \
-    virtualenv
+WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     build-essential \
+    curl \
     software-properties-common \
-    git
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-USER appuser
-WORKDIR /home/appuser
+COPY data_check/requirements.txt .
 
-COPY data_check/* app
+RUN pip3 install -r requirements.txt
 
-ENV VIRTUAL_ENV=/home/appuser/venv
-RUN virtualenv ${VIRTUAL_ENV}
-RUN . ${VIRTUAL_ENV}/bin/activate && pip install -r app/requirements.txt
+COPY data_check/ .
 
 EXPOSE 8501
 
-COPY run.sh /home/appuser
-ENTRYPOINT ["./run.sh"]
+HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+
+ENTRYPOINT ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
