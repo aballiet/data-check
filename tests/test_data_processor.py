@@ -33,7 +33,7 @@ def test_get_query_plain_diff_tables():
     )
     select *
     from inner_merged
-    where cast(B__1 as string) <> cast(B__2 as string) or C__1 <> C__2
+    where coalesce(cast(B__1 as string), "none") <> coalesce(cast(B__2 as string), "none") or coalesce(C__1, "none") <> coalesce(C__2, "none")
     """
     )
 
@@ -60,7 +60,7 @@ def test_query_ratio_common_values_per_column():
     count_diff as (
         select
             count(A) as count_common
-            , countif(coalesce(cast(table_1.A as string), cast(table_2.A as string)) is not null) AS A_count_not_null, countif(cast(table_1.A as string) = cast(table_2.A as string)) AS A, countif(coalesce(cast(table_1.B as string), cast(table_2.B as string)) is not null) AS B_count_not_null, countif(cast(table_1.B as string) = cast(table_2.B as string)) AS B, countif(coalesce(table_1.C, table_2.C) is not null) AS C_count_not_null, countif(table_1.C = table_2.C) AS C
+            , countif(coalesce(cast(table_1.A as string), cast(table_2.A as string)) is not null) AS A_count_not_null, countif(coalesce(cast(table_1.A as string), 'none') = coalesce(cast(table_2.A as string), 'non')) AS A, countif(coalesce(cast(table_1.B as string), cast(table_2.B as string)) is not null) AS B_count_not_null, countif(coalesce(cast(table_1.B as string), 'none') = coalesce(cast(table_2.B as string), 'non')) AS B, countif(coalesce(table_1.C, table_2.C) is not null) AS C_count_not_null, countif(coalesce(table_1.C, 'none') = coalesce(table_2.C, 'non')) AS C
         from `table1` as table_1
         inner join `table2` as table_2
             using (A)
