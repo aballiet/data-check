@@ -1,5 +1,4 @@
-from client import get_columns, query_table, run_query_to_dataframe, get_table_schema
-from data_formatter import style_percentage
+from client import get_table, query_table, run_query_to_dataframe
 from data_processor import (
     get_query_insight_tables_primary_keys,
     get_query_plain_diff_tables,
@@ -12,23 +11,29 @@ from models.table import TableSchema
 import pandas as pd
 
 
+def get_table_schema(table: str) -> TableSchema:
+    """Get the schema of a table"""
+    table = get_table(table)
+    return TableSchema.from_bq_table(table=table)
+
+
 def get_table_columns(table1: str, table2: str) -> Tuple[List[str], List[str]]:
     """Get the columns of two tables"""
-    columns_table_1 = get_columns(table=table1)
-    columns_table_2 = get_columns(table=table2)
+    columns_table_1 = get_table_schema(table1).columns_names
+    columns_table_2 = get_table_schema(table2).columns_names
     return columns_table_1, columns_table_2
 
 
 def get_table_schemas(table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
     """Get the schemas of two tables"""
-    schema_table_1, unsupported_fields1 = get_table_schema(table=table1)
-    schema_table_2, unsupported_fields2 = get_table_schema(table=table2)
+    schema_table_1 = get_table_schema(table=table1)
+    schema_table_2 = get_table_schema(table=table2)
 
-    if unsupported_fields1 or unsupported_fields2:
+    if schema_table_1.get_unsupported_fields() or schema_table_2.get_unsupported_fields():
         import streamlit as st
 
         st.warning(
-            f"Unsupported RECORD fields: table 1: {unsupported_fields1} / table 2: {unsupported_fields2}, cannot be selected"
+            f"Unsupported RECORD fields: table 1: {schema_table_1.get_unsupported_fields()} / table 2: {schema_table_2.get_unsupported_fields()}, cannot be selected"
         )
     return schema_table_1, schema_table_2
 

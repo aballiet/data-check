@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from google.cloud import bigquery
 from typing import List
 from enum import Enum
 
@@ -47,6 +48,14 @@ class TableSchema:
     def columns_names(self) -> list:
         return [column.name for column in self.columns]
 
+    def get_unsupported_fields(self) -> List[str]:
+        """Returns a list of unsupported fields"""
+        unsupported_fields = []
+        for column in self.columns:
+            if column.field_type == BigQueryDataType.RECORD:
+                unsupported_fields.append(column.name)
+        return unsupported_fields
+
     def get_column(self, column_name: str) -> ColumnSchema:
         return next(column for column in self.columns if column.name == column_name)
 
@@ -94,3 +103,14 @@ class TableSchema:
                     f"cast({prefix}{column.name}{column_name_suffix} as string)"
                 )
         return query_parts
+
+    @classmethod
+    def from_bq_table(cls, table: bigquery.Table):
+        columns = []
+        for field in table.schema:
+            columns.append(
+                ColumnSchema(
+                    name=field.name, field_type=field.field_type, mode=field.mode
+                )
+            )
+        return TableSchema(table_name=table.table_id, columns=columns)
