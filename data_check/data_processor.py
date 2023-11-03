@@ -85,7 +85,7 @@ def get_query_plain_diff_tables(
     )
     select *
     from inner_merged
-    where {' or '.join([f'{cast_fields_1[index]} <> {cast_fields_2[index]}' for index in range(len(common_table_schema.columns_names))])}
+    where {' or '.join([f'coalesce({cast_fields_1[index]}, "none") <> coalesce({cast_fields_2[index]}, "none")' for index in range(len(common_table_schema.columns_names))])}
     """
     print(query)
     return query
@@ -116,7 +116,7 @@ def query_ratio_common_values_per_column(
                 [
                     (
                         f"countif(coalesce({cast_fields_1[index]}, {cast_fields_2[index]}) is not null) AS {common_table_schema.columns_names[index]}_count_not_null"
-                        f", countif({cast_fields_1[index]} = {cast_fields_2[index]}) AS {common_table_schema.columns_names[index]}"
+                        f", countif(coalesce({cast_fields_1[index]}, 'none') = coalesce({cast_fields_2[index]}, 'non')) AS {common_table_schema.columns_names[index]}"
                     )
                     for index in range(len(cast_fields_1))
                 ]
