@@ -6,7 +6,9 @@ from data_helpers import (
     get_column_diff_ratios,
     get_common_schema,
     get_plain_diff,
-    run_query_exclusive_primary_keys
+    run_query_exclusive_primary_keys,
+    get_diff_columns,
+    get_tables_schemas,
 )
 
 
@@ -127,6 +129,13 @@ class DataDiff:
             st.session_state.table1, st.session_state.table2
         )
         st.session_state.common_table_schema = common_table_schema
+
+        taschema_table_1, schema_table_2 = get_tables_schemas(table1=st.session_state.table1, table2=st.session_state.table2)
+        diff_columns1, diff_columns2 = get_diff_columns(taschema_table_1, schema_table_2)
+        st.write("Columns exclusive to table 1 :")
+        st.dataframe(diff_columns1, width=1400)
+        st.write("Columns exclusive to table 2 :")
+        st.dataframe(diff_columns2, width=1400)
 
         primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
 

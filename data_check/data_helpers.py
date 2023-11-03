@@ -7,27 +7,26 @@ from data_processor import (
 )
 from tools import run_multithreaded
 from typing import List, Tuple
-from models.table import TableSchema
+from models.table import TableSchema, ColumnSchema
 import pandas as pd
 
 
-def get_table_schema(table: str) -> TableSchema:
+def get_tables_schemas(table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
     """Get the schema of a table"""
-    table = get_table(table)
-    return TableSchema.from_bq_table(table=table)
+    table1_bq = get_table(table1)
+    table2_bq = get_table(table2)
+    return TableSchema.from_bq_table(table=table1_bq), TableSchema.from_bq_table(table=table2_bq)
 
 
 def get_table_columns(table1: str, table2: str) -> Tuple[List[str], List[str]]:
     """Get the columns of two tables"""
-    columns_table_1 = get_table_schema(table1).columns_names
-    columns_table_2 = get_table_schema(table2).columns_names
-    return columns_table_1, columns_table_2
+    schema_table_1, schema_table_2 = get_tables_schemas(table1, table2)
+    return schema_table_1.columns_names, schema_table_2.columns_names
 
 
-def get_table_schemas(table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
+def get_table_schemas_warning(table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
     """Get the schemas of two tables"""
-    schema_table_1 = get_table_schema(table=table1)
-    schema_table_2 = get_table_schema(table=table2)
+    schema_table_1, schema_table_2 = get_tables_schemas(table1, table2)
 
     if schema_table_1.get_unsupported_fields() or schema_table_2.get_unsupported_fields():
         import streamlit as st
@@ -38,9 +37,23 @@ def get_table_schemas(table1: str, table2: str) -> Tuple[TableSchema, TableSchem
     return schema_table_1, schema_table_2
 
 
+def get_diff_columns(schema_table_1: TableSchema, schema_table_2: TableSchema) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns a mapping of columns that are different per table"""
+    common_columns_names = schema_table_1.get_common_column_names(schema_table_2)
+    diff_columns_table_1 = [
+        column for column in schema_table_1.columns if column.name not in common_columns_names or column.field_type != schema_table_2.get_column(column.name).field_type
+    ]
+    diff_columns_table_2 = [
+        column for column in schema_table_2.columns if column.name not in common_columns_names or column.field_type != schema_table_1.get_column(column.name).field_type
+    ]
+    diff_1_table_schema = TableSchema(table_name="diff_1_table", columns=diff_columns_table_1)
+    diff_2_table_schema = TableSchema(table_name="diff_2_table", columns=diff_columns_table_2)
+    return diff_1_table_schema.to_dataframe(), diff_2_table_schema.to_dataframe()
+
+
 def get_common_schema(table1: str, table2: str) -> TableSchema:
     """Get the common schema of two tables"""
-    schema_table_1, schema_table_2 = get_table_schemas(table1=table1, table2=table2)
+    schema_table_1, schema_table_2 = get_table_schemas_warning(table1=table1, table2=table2)
     common_columns = schema_table_1.get_common_columns(schema_table_2)
     return TableSchema(table_name="common_schema", columns=common_columns)
 

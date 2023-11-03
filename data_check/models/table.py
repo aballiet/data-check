@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from google.cloud import bigquery
-from typing import List
+from typing import List, Tuple
 from enum import Enum
+import pandas as pd
 
 
 class BigQueryDataType(str, Enum):
@@ -103,6 +104,16 @@ class TableSchema:
                     f"cast({prefix}{column.name}{column_name_suffix} as string)"
                 )
         return query_parts
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Returns a dataframe of the table schema"""
+        return pd.DataFrame(
+            [
+                [column.name, column.field_type, column.mode]
+                for column in self.columns
+            ],
+            columns=["name", "field_type", "mode"],
+        )
 
     @classmethod
     def from_bq_table(cls, table: bigquery.Table):
