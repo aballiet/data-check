@@ -1,16 +1,8 @@
 import streamlit as st
+from streamlit_tags import st_tags
 import pandas as pd
 from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
-from data_helpers import (
-    run_query_compare_primary_keys,
-    get_column_diff_ratios,
-    get_common_schema,
-    get_plain_diff,
-    run_query_exclusive_primary_keys,
-    get_diff_columns,
-    get_tables_schemas,
-)
-
+from data_processor import DataProcessor
 
 class DataDiff:
     def __init__(self) -> None:
@@ -20,8 +12,10 @@ class DataDiff:
         self.primary_key: str = None
         self.columns_to_compare: str = None
 
+        self.processor: DataProcessor = None
+
         st.set_page_config(layout="wide")
-        st.title("data-diff homemade 🏠")
+        st.title("data-check 🔍")
 
         self.init_from_query_params()
 
@@ -42,10 +36,13 @@ class DataDiff:
                 st.session_state[key] = int(value_to_set)
             elif cast_as == "list":
                 st.session_state[key] = value_to_set.split(",") if value_to_set else []
+            elif cast_as == "bool":
+                st.session_state[key] = str(value_to_set).lower() == "true"
             else:
                 st.session_state[key] = value_to_set
 
     def init_from_query_params(self):
+        self.set_session_state_from_query_params("use_sql", "False", cast_as="bool")
         self.set_session_state_from_query_params("table1", "gorgias-growth-production.dbt_activation.act_candu_ai_user_traits")
         self.set_session_state_from_query_params("table2", "gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits")
         self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
@@ -59,6 +56,7 @@ class DataDiff:
         st.session_state.loaded_tables = st.experimental_get_query_params().get("columns_to_compare", [None])[0] or st.experimental_get_query_params().get("is_select_all", [None])[0]
 
     def update_first_step(self):
+        st.session_state.use_sql = st.session_state.temp_use_sql
         st.session_state.table1 = st.session_state.temp_table_1
         st.session_state.table2 = st.session_state.temp_table_2
         st.session_state.sampling_rate = st.session_state.temp_sampling_rate
@@ -66,8 +64,10 @@ class DataDiff:
         st.experimental_set_query_params(
             sampling_rate=st.session_state.sampling_rate,
             table1=st.session_state.table1,
-            table2=st.session_state.table2
-            )
+            table2=st.session_state.table2,
+            use_sql_table1=str(st.session_state.use_sql_table1).lower(),
+            use_sql_table2=str(st.session_state.use_sql_table2).lower(),
+        )
 
         st.session_state.config_tables = True
         st.session_state.loaded_tables = False
@@ -75,12 +75,19 @@ class DataDiff:
     def first_step(self):
 
         """First step of the app: select tables and sampling rate"""
-        st.text_input(
+        st.toggle(
+            "Use SQL",
+            value=st.session_state["use_sql"],
+            key="temp_use_sql",
+        )
+
+        st.text_area(
             "Table 1",
             value=st.session_state["table1"],
             key="temp_table_1",
         )
-        st.text_input(
+
+        st.text_area(
             "Table 2",
             value=st.session_state["table2"],
             key="temp_table_2",
@@ -125,6 +132,8 @@ class DataDiff:
         """Second step of the app: select primary key and columns to compare"""
         st.write("Retrieving list of common columns...")
 
+        self.processor = DataProcessor(query1=st.session_state.table1, query2=st.session_state.table2)
+
         common_table_schema = get_common_schema(
             st.session_state.table1, st.session_state.table2
         )
@@ -137,14 +146,11 @@ class DataDiff:
         st.write("Columns exclusive to table 2 :")
         st.dataframe(diff_columns2, width=1400)
 
-        primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
 
-        st.selectbox(
-            "Select primary key:",
-            common_table_schema.columns_names,
-            key="temp_primary_key",
-            index=primary_key_select_index
-        )
+        st_tags(value=[st.session_state.primary_key], key="temp_primary_key", maxtags=1, text="Primary key to use", label="")
+
+        st_tags(value=[], key="temp_columns_to_compare", text="Columns to compare", label="")
+
 
         st.multiselect(
             "Select columns to compare:",

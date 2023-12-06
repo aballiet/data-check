@@ -60,16 +60,15 @@ class TableSchema:
     def get_column(self, column_name: str) -> ColumnSchema:
         return next(column for column in self.columns if column.name == column_name)
 
-    def get_common_column_names(self, other) -> List[str]:
+    def get_common_column_names(self, other, include_unsupported: bool = True) -> List[str]:
         """Returns a list of common columns"""
-        return list(set(self.columns_names).intersection(other.columns_names))
+        common_columns_names = list(set(self.columns_names).intersection(other.columns_names))
 
-    def get_common_columns(self, other) -> List[ColumnSchema]:
-        """Returns a mapping of common columns and their field types"""
-        common_columns_names = self.get_common_column_names(other)
-        return [
-            column for column in self.columns if column.name in common_columns_names
-        ]
+        if include_unsupported:
+            return common_columns_names
+
+        unsupported_fields = set(self.get_unsupported_fields() + other.get_unsupported_fields())
+        return [column for column in common_columns_names if column not in unsupported_fields ]
 
     def get_query_cast_schema_as_string(
         self, prefix="", column_name_suffix=""

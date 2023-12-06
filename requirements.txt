@@ -6,3 +6,4 @@ pytest
 pandas-gbq
 tqdm
 seaborn
+streamlit-tags
