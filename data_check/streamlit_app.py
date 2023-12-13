@@ -196,7 +196,7 @@ class DataDiff:
 
             if results_primary_keys["missing_primary_keys_ratio"].iloc[0] > 0 and st.button("Display exclusive primary keys for each table"):
                 st.write("Displaying rows where primary keys are different...")
-                df_exlusive_table1, df_exlusive_table2 = run_query_exclusive_primary_keys(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key)
+                df_exlusive_table1, df_exlusive_table2 = processor.run_query_exclusive_primary_keys()
 
                 st.write("Exclusive to table 1 :")
                 st.dataframe(df_exlusive_table1)
@@ -205,13 +205,9 @@ class DataDiff:
                 st.dataframe(df_exlusive_table2)
 
             st.write("Computing difference ratio...")
-            results_ratio_per_column = get_column_diff_ratios(
-                table1=st.session_state.table1,
-                table2=st.session_state.table2,
-                primary_key=st.session_state.primary_key,
+            results_ratio_per_column = processor.get_column_diff_ratios(
                 selected_columns=st.session_state.columns_to_compare,
                 common_table_schema=st.session_state.common_table_schema,
-                sampling_rate=st.session_state.sampling_rate,
             )
 
             origin_columns = results_ratio_per_column.columns
@@ -246,13 +242,9 @@ class DataDiff:
 
                 st.write(f"Displaying rows where {columns_to_display} is different...")
 
-                dataset = get_plain_diff(
-                    table1=st.session_state.table1,
-                    table2=st.session_state.table2,
-                    primary_key=st.session_state.primary_key,
+                dataset = processor.get_plain_diff(
                     selected_columns=columns_to_display,
                     common_table_schema=st.session_state.common_table_schema,
-                    sampling_rate=st.session_state.sampling_rate,
                 )
 
                 top_menu = st.columns(3)

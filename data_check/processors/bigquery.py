@@ -44,13 +44,23 @@ class BigQueryProcessor(DataProcessor):
         return query
 
     def get_query_exclusive_primary_keys(self, exclusive_to: str) -> str:
-        query = None
+
+        common_table_schema = self.get_common_schema_from_tables()
+
         if exclusive_to == "table1":
             query = f"""
             {self.with_statement}
 
             select
-                table1.*
+                table1.{self.primary_key}
+                , {', '.join(
+                    [
+                        (
+                            f"table1.{col} as {col}__1"
+                        )
+                        for col in common_table_schema.columns_names
+                    ]
+                )}
             from table1
             left join table2 using ({self.primary_key})
             where table2.{self.primary_key} is null
@@ -60,7 +70,15 @@ class BigQueryProcessor(DataProcessor):
             query = f"""
             {self.with_statement}
             select
-                table2.*
+                table2.{self.primary_key}
+                , {', '.join(
+                    [
+                        (
+                            f"table2.{col} as {col}__2"
+                        )
+                        for col in common_table_schema.columns_names
+                    ]
+                )}
             from table2
             left join table1 using ({self.primary_key})
             where table1.{self.primary_key} is null
@@ -83,18 +101,18 @@ class BigQueryProcessor(DataProcessor):
 
         inner_merged as (
             select
-                table_1.{self.primary_key}
+                table1.{self.primary_key}
                 , {', '.join(
                     [
                         (
-                            f"table_1.{col} as {col}__1"
-                            f", table_2.{col} as {col}__2"
+                            f"table1.{col} as {col}__1"
+                            f", table2.{col} as {col}__2"
                         )
                         for col in common_table_schema.columns_names
                     ]
                 )}
-            from table_1{ f" tablesample system ({self.sampling_rate} percent)" if self.sampling_rate < 100 else "" }
-            inner join table_2
+            from table1{ f" tablesample system ({self.sampling_rate} percent)" if self.sampling_rate < 100 else "" }
+            inner join table2
                 using ({self.primary_key})
         )
         select *
@@ -103,18 +121,14 @@ class BigQueryProcessor(DataProcessor):
         """
         return query
 
-    def query_ratio_common_values_per_column(
-        self,
-        common_table_schema: TableSchema,
-        sampling_rate: int = 100,
-    ):
+    def query_ratio_common_values_per_column(self, common_table_schema: TableSchema):
         """Create a SQL query to get the ratio of common values for each column"""
 
         cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
-            prefix="table_1."
+            prefix="table1."
         )
         cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(
-            prefix="table_2."
+            prefix="table2."
         )
 
         query = f"""
@@ -132,8 +146,8 @@ class BigQueryProcessor(DataProcessor):
                         for index in range(len(cast_fields_1))
                     ]
                 )}
-            from table_1{ f" tablesample system ({sampling_rate} percent)" if sampling_rate < 100 else "" }
-            inner join table_2
+            from table1{ f" tablesample system ({self.sampling_rate} percent)" if self.sampling_rate < 100 else "" }
+            inner join table2
                 using ({self.primary_key})
         )
         select {

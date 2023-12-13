@@ -61,22 +61,18 @@ class DataProcessor(ABC):
         pass
 
     @abstractmethod
-    def get_query_insight_tables_primary_keys(self, table1: str, table2: str, primary_key: str) -> str:
+    def get_query_insight_tables_primary_keys(self) -> str:
         """Compare the primary keys of two tables"""
         pass
 
     @abstractmethod
-    def get_query_exclusive_primary_keys(self, table1: str, table2: str, primary_key: str, exclusive_to: str) -> str:
+    def get_query_exclusive_primary_keys(self, exclusive_to: str) -> str:
         pass
 
     @abstractmethod
     def get_query_plain_diff_tables(
         self,
-        table1: str,
-        table2: str,
         common_table_schema: TableSchema,
-        primary_key: str,
-        sampling_rate: int = 100,
     ) -> str:
         """Create a SQL query to get the rows where the columns values are different"""
         pass
@@ -84,11 +80,7 @@ class DataProcessor(ABC):
     @abstractmethod
     def query_ratio_common_values_per_column(
         self,
-        table1: str,
-        table2: str,
         common_table_schema: TableSchema,
-        primary_key: str,
-        sampling_rate: int = 100,
     ):
         """Create a SQL query to get the ratio of common values for each column"""
         pass
@@ -153,9 +145,7 @@ class DataProcessor(ABC):
         return df1, df2
 
 
-    def parse_strucutred_data(
-        data: pd.DataFrame, keys: str, column: str = "values"
-    ) -> pd.DataFrame:
+    def parse_strucutred_data(self, data: pd.DataFrame, keys: List[str], column: str = "values") -> pd.DataFrame:
         """Parse the structured data"""
         data = data.copy()
         for key in keys:
@@ -166,25 +156,15 @@ class DataProcessor(ABC):
 
     def get_column_diff_ratios(
         self,
-        table1: str,
-        table2: str,
-        primary_key: str,
         selected_columns: List[str],
         common_table_schema: TableSchema,
-        sampling_rate: int,
     ) -> pd.DataFrame:
         """Get the ratio of common values for each column"""
         filtered_columns = TableSchema(
             table_name="filtered_columns",
             columns=[common_table_schema.get_column(column) for column in selected_columns],
         )
-        query = self.query_ratio_common_values_per_column(
-            table1=table1,
-            table2=table2,
-            common_table_schema=filtered_columns,
-            primary_key=primary_key,
-            sampling_rate=sampling_rate,
-        )
+        query = self.query_ratio_common_values_per_column(common_table_schema=filtered_columns)
         df = self.client.run_query_to_dataframe(query)
         df = df.transpose().reset_index()
         df.columns = ["column", "values"]
@@ -199,12 +179,8 @@ class DataProcessor(ABC):
 
     def get_plain_diff(
         self,
-        table1: str,
-        table2: str,
-        primary_key: str,
         selected_columns: List[str],
         common_table_schema: TableSchema,
-        sampling_rate: int,
     ) -> pd.DataFrame:
         """Get the rows where the columns values are different"""
         filtered_columns = TableSchema(
@@ -212,31 +188,23 @@ class DataProcessor(ABC):
             columns=[common_table_schema.get_column(column) for column in selected_columns],
         )
         query = self.get_query_plain_diff_tables(
-            table1,
-            table2,
             common_table_schema=filtered_columns,
-            primary_key=primary_key,
-            sampling_rate=sampling_rate,
         )
         df = self.client.run_query_to_dataframe(query)
         return df
 
 
-    def run_query_compare_primary_keys(
-        self, table1: str, table2: str, primary_key: str
-    ) -> pd.DataFrame:
+    def run_query_compare_primary_keys(self) -> pd.DataFrame:
         """Compare the primary keys of two tables"""
-        query = self.get_query_insight_tables_primary_keys(table1, table2, primary_key)
+        query = self.get_query_insight_tables_primary_keys()
         df = self.client.run_query_to_dataframe(query)
         return df
 
-    def run_query_exclusive_primary_keys(
-        self, table1: str, table2: str, primary_key: str,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def run_query_exclusive_primary_keys(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Get the rows where the primary keys are exclusive to one table"""
-        df_exclusive_table1 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table1"))
-        df_exclusive_table1.set_index(primary_key, inplace=True)
+        df_exclusive_table1 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(exclusive_to="table1"))
+        df_exclusive_table1.set_index(self.primary_key, inplace=True)
 
-        df_exclusive_table2 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table2"))
-        df_exclusive_table2.set_index(primary_key, inplace=True)
+        df_exclusive_table2 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(exclusive_to="table2"))
+        df_exclusive_table2.set_index(self.primary_key, inplace=True)
         return df_exclusive_table1, df_exclusive_table2
