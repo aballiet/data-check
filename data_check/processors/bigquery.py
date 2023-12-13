@@ -15,6 +15,9 @@ class BigQueryProcessor(DataProcessor):
             table2 as ({self.query2})
         """
 
+    def get_sql_from_tablename(self, tablename: str) -> str:
+        return f"select * from `{tablename}`"
+
     # Create a query to compare two tables common and exlusive primary keys for two tables
     def get_query_insight_tables_primary_keys(self) -> str:
         """Compare the primary keys of two tables"""

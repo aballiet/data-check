@@ -137,13 +137,13 @@ class DataDiff:
         if not processor.use_sql:
             st.write("Retrieving list of common columns...")
 
-            common_table_schema = processor.get_common_schema_from_tables(
-                st.session_state.table1, st.session_state.table2
-            )
+            common_table_schema = processor.get_common_schema_from_tables()
             st.session_state.common_table_schema = common_table_schema
 
-            taschema_table_1, schema_table_2 = processor.client.get_tables_schemas(table1=st.session_state.table1, table2=st.session_state.table2)
+            taschema_table_1 = processor.client.get_table_schema(processor.table1)
+            schema_table_2 = processor.client.get_table_schema(processor.table2)
             diff_columns1, diff_columns2 = processor.get_diff_columns(taschema_table_1, schema_table_2)
+
             st.write("Columns exclusive to table 1 :")
             st.dataframe(diff_columns1, width=1400)
             st.write("Columns exclusive to table 2 :")
@@ -184,14 +184,14 @@ class DataDiff:
             with st.form(key="second_step"):
                 self.second_step()
 
+        processor = self.get_processor()
+        processor.set_config_data(primary_key=st.session_state.primary_key, columns_to_compare=st.session_state.columns_to_compare)
+
         if st.session_state.loaded_tables:
             # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
             st.write("Analyzing primary keys...")
-            results_primary_keys = run_query_compare_primary_keys(
-                st.session_state.table1,
-                st.session_state.table2,
-                st.session_state.primary_key,
-            )
+            results_primary_keys = processor.run_query_compare_primary_keys()
+
             st.dataframe(style_percentage(results_primary_keys, columns=["missing_primary_keys_ratio"]))
 
             if results_primary_keys["missing_primary_keys_ratio"].iloc[0] > 0 and st.button("Display exclusive primary keys for each table"):

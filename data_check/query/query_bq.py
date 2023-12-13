@@ -1,7 +1,6 @@
 import pandas as pd
 from query_client import QueryClient
 import streamlit as st
-from typing import Tuple
 from google.cloud import bigquery
 from models.table import TableSchema
 from pandas_gbq import read_gbq
@@ -51,8 +50,7 @@ class QueryBigQuery(QueryClient):
         """
         return _self.run_query_to_dataframe(query=query)
 
-    def get_tables_schemas(self, table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
+    def get_table_schema(self, table: str) -> TableSchema:
         """Get the schema of a table"""
-        table1_bq = self.client.get_table(table1)
-        table2_bq = self.client.get_table(table2)
-        return TableSchema.from_bq_table(table=table1_bq), TableSchema.from_bq_table(table=table2_bq)
+        table_bq = self.client.get_table(table)
+        return TableSchema.from_bq_table(table=table_bq)
