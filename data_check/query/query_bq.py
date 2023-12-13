@@ -16,7 +16,7 @@ class QueryBigQuery(QueryClient):
         self.client = self.init_client()
 
     @st.cache_resource
-    def get_credentials(self):
+    def get_credentials(_self):
         # Create API client from Streamlit Secret
         credentials = service_account.Credentials.from_service_account_info(
             st.secrets["gcp_service_account"]
@@ -24,10 +24,10 @@ class QueryBigQuery(QueryClient):
         return credentials
 
     @st.cache_resource
-    def init_client(self) -> bigquery.Client:
+    def init_client(_self) -> bigquery.Client:
         if not USE_STREAMLIT_SECRET:
             return bigquery.Client()
-        credentials = self.get_credentials()
+        credentials = _self.get_credentials()
         return bigquery.Client(credentials=credentials)
 
     @st.cache_data(ttl=600)
@@ -35,21 +35,21 @@ class QueryBigQuery(QueryClient):
         return self.client.get_table(table)
 
     @st.cache_data(ttl=600)
-    def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
+    def run_query_to_dataframe(_self, query: str) -> pd.DataFrame:
         if not USE_STREAMLIT_SECRET:
             return read_gbq(query)
 
-        credentials = self.get_credentials()
+        credentials = _self.get_credentials()
         return read_gbq(query, credentials=credentials)
 
-    def query_table(self, table: str, columns: list[str]) -> pd.DataFrame:
+    def query_table(_self, table: str, columns: list[str]) -> pd.DataFrame:
         columns = ", ".join(columns)
         query = f"""
             SELECT
                 {columns}
             FROM `{table}`
         """
-        return self.run_query_to_dataframe(query=query)
+        return _self.run_query_to_dataframe(query=query)
 
     def get_tables_schemas(self, table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
         """Get the schema of a table"""

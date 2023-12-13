@@ -1,10 +1,11 @@
+from query.query_bq import QueryBigQuery
 from data_processor import DataProcessor
 from models.table import TableSchema
 
 class BigQueryProcessor(DataProcessor):
 
-    def __init__(self, query1: str, query2: str, primary_key: str, sampling_rate: int) -> None:
-        super().__init__(query1, query2, primary_key, sampling_rate)
+    def __init__(self, query1: str, query2: str, use_sql: bool, sampling_rate: int) -> None:
+        super().__init__(query1, query2, use_sql, sampling_rate, QueryBigQuery())
 
     @property
     def with_statement(self) -> str:
@@ -37,7 +38,6 @@ class BigQueryProcessor(DataProcessor):
                 , safe_divide(missing_primary_key_in_table2 + missing_primary_key_in_table1, total_rows) as missing_primary_keys_ratio
             from agg_diff_keys
         """
-        print(query)
         return query
 
     def get_query_exclusive_primary_keys(self, exclusive_to: str) -> str:
@@ -62,7 +62,6 @@ class BigQueryProcessor(DataProcessor):
             left join table1 using ({self.primary_key})
             where table1.{self.primary_key} is null
             """
-        print(query)
         return query
 
     def get_query_plain_diff_tables(
@@ -99,7 +98,6 @@ class BigQueryProcessor(DataProcessor):
         from inner_merged
         where {' or '.join([f'coalesce({cast_fields_1[index]}, "none") <> coalesce({cast_fields_2[index]}, "none")' for index in range(len(common_table_schema.columns_names))])}
         """
-        print(query)
         return query
 
     def query_ratio_common_values_per_column(
@@ -150,5 +148,4 @@ class BigQueryProcessor(DataProcessor):
         }
         from count_diff
         """
-        print(query)
         return query

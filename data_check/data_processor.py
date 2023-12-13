@@ -56,20 +56,15 @@ class DataProcessor(ABC):
         """Create a SQL query to get the ratio of common values for each column"""
         pass
 
-    @abstractmethod
-    def get_tables_schemas(self, table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
-        """Get the schema of a table"""
-        pass
-
     ###### METHODS ######
     def get_table_columns(self, table1: str, table2: str) -> Tuple[List[str], List[str]]:
         """Get the columns of two tables"""
-        schema_table_1, schema_table_2 = self.get_tables_schemas(table1, table2)
+        schema_table_1, schema_table_2 = self.client.get_tables_schemas(table1, table2)
         return schema_table_1.columns_names, schema_table_2.columns_names
 
     def get_table_schemas_warning(self, table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
         """Get the schemas of two tables"""
-        schema_table_1, schema_table_2 = self.get_tables_schemas(table1, table2)
+        schema_table_1, schema_table_2 = self.client.get_tables_schemas(table1, table2)
 
         if schema_table_1.get_unsupported_fields() or schema_table_2.get_unsupported_fields():
             import streamlit as st
@@ -94,7 +89,7 @@ class DataProcessor(ABC):
         return diff_1_table_schema.to_dataframe(), diff_2_table_schema.to_dataframe()
 
 
-    def get_common_schema(self, table1: str, table2: str) -> TableSchema:
+    def get_common_schema_from_tables(self, table1: str, table2: str) -> TableSchema:
         """Get the common schema of two tables"""
         schema_table_1, schema_table_2 = self.get_table_schemas_warning(table1=table1, table2=table2)
         common_columns = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=False)

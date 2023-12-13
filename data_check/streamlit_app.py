@@ -65,12 +65,14 @@ class DataDiff:
             sampling_rate=st.session_state.sampling_rate,
             table1=st.session_state.table1,
             table2=st.session_state.table2,
-            use_sql_table1=str(st.session_state.use_sql_table1).lower(),
-            use_sql_table2=str(st.session_state.use_sql_table2).lower(),
+            use_sql=str(st.session_state.use_sql).lower(),
         )
 
         st.session_state.config_tables = True
         st.session_state.loaded_tables = False
+
+    def get_processor(self) -> BigQueryProcessor:
+        return BigQueryProcessor(query1=st.session_state.table1, query2=st.session_state.table2, use_sql=st.session_state.use_sql, sampling_rate=st.session_state.sampling_rate)
 
     def first_step(self):
         """First step of the app: select tables and sampling rate"""
@@ -130,42 +132,46 @@ class DataDiff:
 
     def second_step(self):
         """Second step of the app: select primary key and columns to compare"""
-        st.write("Retrieving list of common columns...")
+        processor = self.get_processor()
 
-        self.processor = BigQueryProcessor(query1=st.session_state.table1, query2=st.session_state.table2)
+        if not processor.use_sql:
+            st.write("Retrieving list of common columns...")
 
-        common_table_schema = get_common_schema(
-            st.session_state.table1, st.session_state.table2
-        )
-        st.session_state.common_table_schema = common_table_schema
+            common_table_schema = processor.get_common_schema_from_tables(
+                st.session_state.table1, st.session_state.table2
+            )
+            st.session_state.common_table_schema = common_table_schema
 
-        taschema_table_1, schema_table_2 = get_tables_schemas(table1=st.session_state.table1, table2=st.session_state.table2)
-        diff_columns1, diff_columns2 = get_diff_columns(taschema_table_1, schema_table_2)
-        st.write("Columns exclusive to table 1 :")
-        st.dataframe(diff_columns1, width=1400)
-        st.write("Columns exclusive to table 2 :")
-        st.dataframe(diff_columns2, width=1400)
+            taschema_table_1, schema_table_2 = processor.client.get_tables_schemas(table1=st.session_state.table1, table2=st.session_state.table2)
+            diff_columns1, diff_columns2 = processor.get_diff_columns(taschema_table_1, schema_table_2)
+            st.write("Columns exclusive to table 1 :")
+            st.dataframe(diff_columns1, width=1400)
+            st.write("Columns exclusive to table 2 :")
+            st.dataframe(diff_columns2, width=1400)
 
+            primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
 
-        st_tags(value=[st.session_state.primary_key], key="temp_primary_key", maxtags=1, text="Primary key to use", label="")
+            st.selectbox(
+                "Select primary key:",
+                common_table_schema.columns_names,
+                key="temp_primary_key",
+                index=primary_key_select_index
+            )
 
-        st_tags(value=[], key="temp_columns_to_compare", text="Columns to compare", label="")
+            st.multiselect(
+                "Select columns to compare:",
+                common_table_schema.columns_names,
+                key="temp_columns_to_compare",
+                default=st.session_state.columns_to_compare,
+            )
 
+            st.checkbox(
+                "Select all",
+                key="temp_is_select_all",
+                value=str(st.session_state.is_select_all).lower() == "true",
+            )
 
-        st.multiselect(
-            "Select columns to compare:",
-            common_table_schema.columns_names,
-            key="temp_columns_to_compare",
-            default=st.session_state.columns_to_compare,
-        )
-
-        st.checkbox(
-            "Select all",
-            key="temp_is_select_all",
-            value=str(st.session_state.is_select_all).lower() == "true",
-        )
-
-        st.form_submit_button(label="OK", on_click=self.update_second_step)
+            st.form_submit_button(label="OK", on_click=self.update_second_step)
 
     def window(self):
         # Parse query params from URL
