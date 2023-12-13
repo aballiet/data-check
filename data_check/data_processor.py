@@ -79,10 +79,16 @@ class DataProcessor(ABC):
         """Returns a mapping of columns that are different per table"""
         common_columns_names = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=True)
         diff_columns_table_1 = [
-            column for column in schema_table_1.columns if column.name not in common_columns_names or column.field_type != schema_table_2.get_column(column.name).field_type
+            column
+            for column in schema_table_1.columns
+            if column.name not in common_columns_names
+            or column.field_type != schema_table_2.get_column(column.name).field_type
         ]
         diff_columns_table_2 = [
-            column for column in schema_table_2.columns if column.name not in common_columns_names or column.field_type != schema_table_1.get_column(column.name).field_type
+            column
+            for column in schema_table_2.columns
+            if column.name not in common_columns_names
+            or column.field_type != schema_table_1.get_column(column.name).field_type
         ]
         diff_1_table_schema = TableSchema(table_name="diff_1_table", columns=diff_columns_table_1)
         diff_2_table_schema = TableSchema(table_name="diff_2_table", columns=diff_columns_table_2)
@@ -93,6 +99,7 @@ class DataProcessor(ABC):
         """Get the common schema of two tables"""
         schema_table_1, schema_table_2 = self.get_table_schemas_warning(table1=table1, table2=table2)
         common_columns = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=False)
+        common_columns = [ schema_table_1.get_column(column) for column in common_columns ]
         return TableSchema(table_name="common_schema", columns=common_columns)
 
 
