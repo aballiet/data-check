@@ -1,20 +1,10 @@
 from data_processor import DataProcessor
 from models.table import TableSchema
-import streamlit as st
-from google.cloud import bigquery
-from typing import List, Tuple
-import pandas as pd
-from os import getenv
-from pandas_gbq import read_gbq
-from google.oauth2 import service_account
-
-USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 
 class BigQueryProcessor(DataProcessor):
 
     def __init__(self, query1: str, query2: str, primary_key: str, sampling_rate: int) -> None:
         super().__init__(query1, query2, primary_key, sampling_rate)
-        self.client = self.init_client()
 
     @property
     def with_statement(self) -> str:
@@ -23,48 +13,6 @@ class BigQueryProcessor(DataProcessor):
             table1 as ({self.query1}),
             table2 as ({self.query2})
         """
-
-    @st.cache_resource
-    def get_credentials(self):
-        # Create API client from Streamlit Secret
-        credentials = service_account.Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"]
-        )
-        return credentials
-
-    @st.cache_resource
-    def init_client(self) -> bigquery.Client:
-        if not USE_STREAMLIT_SECRET:
-            return bigquery.Client()
-        credentials = self.get_credentials()
-        return bigquery.Client(credentials=credentials)
-
-    @st.cache_data(ttl=600)
-    def get_table(self, table: str) -> bigquery.Table:
-        return self.client.get_table(table)
-
-    @st.cache_data(ttl=600)
-    def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
-        if not USE_STREAMLIT_SECRET:
-            return read_gbq(query)
-
-        credentials = self.get_credentials()
-        return read_gbq(query, credentials=credentials)
-
-    def query_table(self, table: str, columns: list[str]) -> pd.DataFrame:
-        columns = ", ".join(columns)
-        query = f"""
-            SELECT
-                {columns}
-            FROM `{table}`
-        """
-        return self.run_query_to_dataframe(query=query)
-
-    def get_tables_schemas(self, table1: str, table2: str) -> Tuple[TableSchema, TableSchema]:
-        """Get the schema of a table"""
-        table1_bq = self.get_table(table1)
-        table2_bq = self.get_table(table2)
-        return TableSchema.from_bq_table(table=table1_bq), TableSchema.from_bq_table(table=table2_bq)
 
     # Create a query to compare two tables common and exlusive primary keys for two tables
     def get_query_insight_tables_primary_keys(self) -> str:

@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_tags import st_tags
 import pandas as pd
 from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
-from data_processor import DataProcessor
+from processors.bigquery import BigQueryProcessor
 
 class DataDiff:
     def __init__(self) -> None:
@@ -12,7 +12,7 @@ class DataDiff:
         self.primary_key: str = None
         self.columns_to_compare: str = None
 
-        self.processor: DataProcessor = None
+        self.processor: BigQueryProcessor = None
 
         st.set_page_config(layout="wide")
         st.title("data-check 🔍")
@@ -73,8 +73,8 @@ class DataDiff:
         st.session_state.loaded_tables = False
 
     def first_step(self):
-
         """First step of the app: select tables and sampling rate"""
+
         st.toggle(
             "Use SQL",
             value=st.session_state["use_sql"],
@@ -132,7 +132,7 @@ class DataDiff:
         """Second step of the app: select primary key and columns to compare"""
         st.write("Retrieving list of common columns...")
 
-        self.processor = DataProcessor(query1=st.session_state.table1, query2=st.session_state.table2)
+        self.processor = BigQueryProcessor(query1=st.session_state.table1, query2=st.session_state.table2)
 
         common_table_schema = get_common_schema(
             st.session_state.table1, st.session_state.table2

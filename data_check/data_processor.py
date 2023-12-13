@@ -3,40 +3,25 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 import pandas as pd
 from tools import run_multithreaded
+from query_client import QueryClient
 
 class DataProcessor(ABC):
 
-    def __init__(self, query1: str, query2: str, use_sql: bool, sampling_rate: int) -> None:
+    def __init__(self, query1: str, query2: str, use_sql: bool, sampling_rate: int, client: QueryClient) -> None:
         self.query1 = query1
         self.query2 = query2
         self.sampling_rate = sampling_rate
         self.use_sql = use_sql
+        self.client = client
         self._primary_key = None
 
-    @property.setter
+    @property
     def primary_key(self) -> str:
-        return "id"
+        return self._primary_key
 
-    ###### ABSTRACT METHODS ######
-    @abstractmethod
-    def get_credentials(self):
-        pass
-
-    @abstractmethod
-    def init_client(self):
-        pass
-
-    @abstractmethod
-    def get_table(self, table: str): # TODO : remove bigquery.Table
-        pass
-
-    @abstractmethod
-    def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
-        pass
-
-    @abstractmethod
-    def query_table(self, table: str, columns: list[str]) -> pd.DataFrame:
-        pass
+    @primary_key.setter
+    def primary_key(self, value) -> str:
+        self._primary_key = value
 
     @abstractmethod
     def get_query_insight_tables_primary_keys(self, table1: str, table2: str, primary_key: str) -> str:
@@ -121,8 +106,8 @@ class DataProcessor(ABC):
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Get the dataframes of two tables"""
         jobs = [
-            (self.query_table, {"table": table1, "columns": columns}),
-            (self.query_table, {"table": table2, "columns": columns}),
+            (self.client.query_table, {"table": table1, "columns": columns}),
+            (self.client.query_table, {"table": table2, "columns": columns}),
         ]
         df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
         return df1, df2
@@ -160,7 +145,7 @@ class DataProcessor(ABC):
             primary_key=primary_key,
             sampling_rate=sampling_rate,
         )
-        df = self.run_query_to_dataframe(query)
+        df = self.client.run_query_to_dataframe(query)
         df = df.transpose().reset_index()
         df.columns = ["column", "values"]
 
@@ -193,7 +178,7 @@ class DataProcessor(ABC):
             primary_key=primary_key,
             sampling_rate=sampling_rate,
         )
-        df = self.run_query_to_dataframe(query)
+        df = self.client.run_query_to_dataframe(query)
         return df
 
 
@@ -202,7 +187,7 @@ class DataProcessor(ABC):
     ) -> pd.DataFrame:
         """Compare the primary keys of two tables"""
         query = self.get_query_insight_tables_primary_keys(table1, table2, primary_key)
-        df = self.run_query_to_dataframe(query)
+        df = self.client.run_query_to_dataframe(query)
         return df
 
 
@@ -210,9 +195,9 @@ class DataProcessor(ABC):
         self, table1: str, table2: str, primary_key: str,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Get the rows where the primary keys are exclusive to one table"""
-        df_exclusive_table1 = self.run_query_to_dataframe(self.get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table1"))
+        df_exclusive_table1 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table1"))
         df_exclusive_table1.set_index(primary_key, inplace=True)
 
-        df_exclusive_table2 = self.run_query_to_dataframe(self.get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table2"))
+        df_exclusive_table2 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(table1, table2, primary_key, exclusive_to="table2"))
         df_exclusive_table2.set_index(primary_key, inplace=True)
         return df_exclusive_table1, df_exclusive_table2
