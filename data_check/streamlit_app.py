@@ -170,8 +170,17 @@ class DataDiff:
                 key="temp_is_select_all",
                 value=str(st.session_state.is_select_all).lower() == "true",
             )
+        else:
+            st.write("As you are using SQL, you need to specify the primary key and columns to compare manually.")
+            st_tags(value=[], label="Select primary key:", key="temp_primary_key", text="Press enter to add a column", maxtags=1)
+            st.checkbox(
+                "Compare all common columns",
+                key="temp_is_select_all",
+                value=True,
+                disabled=True
+            )
 
-            st.form_submit_button(label="OK", on_click=self.update_second_step)
+        st.form_submit_button(label="OK", on_click=self.update_second_step)
 
     def window(self):
         # Parse query params from URL
