@@ -220,7 +220,7 @@ class DataDiff:
 
             results_ratio_per_column.insert(0, "Select", False)
             df_with_selections = style_percentage(
-                results_ratio_per_column, columns=["percentage_diff_values", "ratio_not_null", "ratio_not_equal"]
+                results_ratio_per_column, columns=["percentage_diff_values", "ratio_not_null", "ratio_equal"]
             )
             df_with_selections = style_gradient(
                 df_with_selections, columns=["percentage_diff_values"]

@@ -177,8 +177,8 @@ class DataProcessor(ABC):
         df = df.transpose().reset_index()
         df.columns = ["column", "values"]
 
-        df = self.parse_strucutred_data(df, keys=["ratio_not_null", "ratio_not_equal"])
-        df["percentage_diff_values"] = 1 - df["ratio_not_equal"]
+        df = self.parse_strucutred_data(df, keys=["ratio_not_null", "ratio_equal"])
+        df["percentage_diff_values"] = 1 - df["ratio_equal"]
         df.sort_values(
             by=["percentage_diff_values", "ratio_not_null"], ascending=False, inplace=True
         )

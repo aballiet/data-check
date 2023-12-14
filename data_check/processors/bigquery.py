@@ -158,7 +158,7 @@ class BigQueryProcessor(DataProcessor):
                     (
                         f"struct("
                             f"safe_divide({col}_count_not_null, count_common) as ratio_not_null"
-                            f", safe_divide({col}, {col}_count_not_null) as ratio_not_equal"
+                            f", safe_divide({col}, {col}_count_not_null) as ratio_equal"
                         f") AS {col}"
                     )
                     for col in common_table_schema.columns_names
