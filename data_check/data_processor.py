@@ -24,15 +24,15 @@ class DataProcessor(ABC):
             self.query1 = query1
             self._table1 = None
         else:
-            self._table1 = query1.strip().strip('\r\n')
+            self._table1 = query1.strip().strip("\r\n")
             self.query1 = self.get_sql_from_tablename(self._table1)
 
-        if  self.check_input_is_sql(query2):
+        if self.check_input_is_sql(query2):
             self.use_sql_query2 = True
             self.query2 = query2
             self._table2 = None
         else:
-            self._table2 = query2.strip().strip('\r\n')
+            self._table2 = query2.strip().strip("\r\n")
             self.query2 = self.get_sql_from_tablename(self._table2)
 
         # Needed for full diff
@@ -40,7 +40,9 @@ class DataProcessor(ABC):
         self._columns_to_compare = None
         self._sampling_rate = None
 
-    def set_config_data(self, primary_key: str, columns_to_compare: List[str], sampling_rate: int):
+    def set_config_data(
+        self, primary_key: str, columns_to_compare: List[str], sampling_rate: int
+    ):
         self._primary_key = primary_key
         self._columns_to_compare = columns_to_compare
         self._sampling_rate = sampling_rate

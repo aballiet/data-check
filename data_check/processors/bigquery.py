@@ -4,9 +4,7 @@ from query.query_bq import QueryBigQuery
 
 
 class BigQueryProcessor(DataProcessor):
-    def __init__(
-        self, query1: str, query2: str
-    ) -> None:
+    def __init__(self, query1: str, query2: str) -> None:
         super().__init__(query1, query2, QueryBigQuery())
 
     @property

@@ -185,8 +185,10 @@ class DataDiff:
             max_value=100,
             step=1,
             key="temp_sampling_rate",
-            value=100 if not processor.is_sampling_allowed else st.session_state.sampling_rate,
-            disabled=(not processor.is_sampling_allowed)
+            value=100
+            if not processor.is_sampling_allowed
+            else st.session_state.sampling_rate,
+            disabled=(not processor.is_sampling_allowed),
         )
 
         st.form_submit_button(label="OK", on_click=self.update_second_step)
