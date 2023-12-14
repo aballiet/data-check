@@ -10,10 +10,15 @@ class BigQueryProcessor(DataProcessor):
     @property
     def with_statement(self) -> str:
         return f"""
-            with
-            table1 as ({self.query1}),
-            table2 as ({self.query2})
-        """
+        with
+
+        table1 as (
+            {self.query1}
+        ),
+
+        table2 as (
+            {self.query2}
+        )"""
 
     def check_input_is_sql(self, value: str) -> bool:
         """Check if the input is a SQL query"""

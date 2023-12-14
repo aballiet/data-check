@@ -21,7 +21,7 @@ class DataProcessor(ABC):
 
         if self.check_input_is_sql(query1):
             self.use_sql_query1 = True
-            self.query1 = query1
+            self.query1 = query1.strip().strip("\r\n")
             self._table1 = None
         else:
             self._table1 = query1.strip().strip("\r\n")
@@ -29,7 +29,7 @@ class DataProcessor(ABC):
 
         if self.check_input_is_sql(query2):
             self.use_sql_query2 = True
-            self.query2 = query2
+            self.query2 = query2.strip().strip("\r\n")
             self._table2 = None
         else:
             self._table2 = query2.strip().strip("\r\n")
