@@ -42,9 +42,17 @@ class DataDiff:
                 st.session_state[key] = value_to_set
 
     def init_from_query_params(self):
-        self.set_session_state_from_query_params("use_sql", "False", cast_as="bool")
-        self.set_session_state_from_query_params("table1", "gorgias-growth-production.dbt_activation.act_candu_ai_user_traits")
-        self.set_session_state_from_query_params("table2", "gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits")
+        self.set_session_state_from_query_params("use_sql", "True", cast_as="bool")
+        self.set_session_state_from_query_params("table1",
+        '''SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
+        FROM `gorgias-growth-production.dbt_activation.act_candu_ai_user_traits`
+        LIMIT 1000
+        ''')
+        self.set_session_state_from_query_params("table2",
+        '''SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
+        FROM `gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits`
+        LIMIT 1000
+        ''')
         self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
         self.set_session_state_from_query_params("primary_key", "user_id")
 
@@ -65,7 +73,7 @@ class DataDiff:
             sampling_rate=st.session_state.sampling_rate,
             table1=st.session_state.table1,
             table2=st.session_state.table2,
-            use_sql=str(st.session_state.use_sql).lower(),
+            use_sql=st.session_state.use_sql,
         )
 
         st.session_state.config_tables = True
@@ -79,7 +87,7 @@ class DataDiff:
 
         st.toggle(
             "Use SQL",
-            value=st.session_state["use_sql"],
+            value="True" if st.session_state.use_sql else "False",
             key="temp_use_sql",
         )
 
@@ -107,17 +115,25 @@ class DataDiff:
         st.form_submit_button(label="OK", on_click=self.update_first_step)
 
     def update_second_step(self):
-        st.session_state.primary_key = st.session_state.temp_primary_key
         st.session_state.is_select_all = st.session_state.temp_is_select_all
 
-        if st.session_state.is_select_all:
-            st.session_state.columns_to_compare = (
-                st.session_state.common_table_schema.columns_names
-            )
+        processor = self.get_processor()
+
+        if processor.use_sql:
+            st.session_state.columns_to_compare = ["all"]
+            st.session_state.primary_key = st.session_state.temp_primary_key[0]
+
         else:
-            st.session_state.columns_to_compare = (
-                st.session_state.temp_columns_to_compare
-            )
+            st.session_state.primary_key = st.session_state.temp_primary_key
+
+            if st.session_state.is_select_all:
+                st.session_state.columns_to_compare = (
+                    st.session_state.common_table_schema.columns_names
+                )
+            else:
+                st.session_state.columns_to_compare = (
+                    st.session_state.temp_columns_to_compare
+                )
 
         st.experimental_set_query_params(
             sampling_rate=st.session_state.sampling_rate,
