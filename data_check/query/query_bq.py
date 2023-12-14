@@ -6,6 +6,7 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from models.table import TableSchema
 from query_client import QueryClient
+from sqlglot import parse_one
 
 USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 
@@ -59,5 +60,6 @@ class QueryBigQuery(QueryClient):
     @st.cache_data(ttl=30)
     def get_table_schema_from_sql(_self, query: str) -> TableSchema:
         """Get the schema of a table from a query"""
-        query_job = _self.run_query_job(query)
+        query_with_limit = parse_one(query, dialect="bigquery").limit(50).sql(dialect="bigquery")
+        query_job = _self.run_query_job(query_with_limit)
         return TableSchema.from_bq_query_job(query_job)

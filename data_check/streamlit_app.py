@@ -86,6 +86,9 @@ class DataDiff:
         )
 
         st.session_state.config_tables = True
+        st.session_state.is_select_all = None
+        st.session_state.columns_to_compare = None
+
         st.session_state.loaded_tables = False
 
     def get_processor(self) -> BigQueryProcessor:
