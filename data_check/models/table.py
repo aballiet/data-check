@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from google.cloud import bigquery
-from typing import List, Tuple
 from enum import Enum
+from typing import List, Tuple
+
 import pandas as pd
+from google.cloud import bigquery
 
 
 class BigQueryDataType(str, Enum):
@@ -60,15 +61,25 @@ class TableSchema:
     def get_column(self, column_name: str) -> ColumnSchema:
         return next(column for column in self.columns if column.name == column_name)
 
-    def get_common_column_names(self, other, include_unsupported: bool = True) -> List[str]:
+    def get_common_column_names(
+        self, other, include_unsupported: bool = True
+    ) -> List[str]:
         """Returns a list of common columns"""
-        common_columns_names = list(set(self.columns_names).intersection(other.columns_names))
+        common_columns_names = list(
+            set(self.columns_names).intersection(other.columns_names)
+        )
 
         if include_unsupported:
             return common_columns_names
 
-        unsupported_fields = set(self.get_unsupported_fields() + other.get_unsupported_fields())
-        return [column for column in common_columns_names if column not in unsupported_fields ]
+        unsupported_fields = set(
+            self.get_unsupported_fields() + other.get_unsupported_fields()
+        )
+        return [
+            column
+            for column in common_columns_names
+            if column not in unsupported_fields
+        ]
 
     def get_query_cast_schema_as_string(
         self, prefix="", column_name_suffix=""
@@ -107,10 +118,7 @@ class TableSchema:
     def to_dataframe(self) -> pd.DataFrame:
         """Returns a dataframe of the table schema"""
         return pd.DataFrame(
-            [
-                [column.name, column.field_type, column.mode]
-                for column in self.columns
-            ],
+            [[column.name, column.field_type, column.mode] for column in self.columns],
             columns=["name", "field_type", "mode"],
         )
 

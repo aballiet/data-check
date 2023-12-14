@@ -1,15 +1,16 @@
+from os import getenv
+
 import pandas as pd
-from query_client import QueryClient
 import streamlit as st
 from google.cloud import bigquery
-from models.table import TableSchema
 from google.oauth2 import service_account
-from os import getenv
+from models.table import TableSchema
+from query_client import QueryClient
 
 USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 
-class QueryBigQuery(QueryClient):
 
+class QueryBigQuery(QueryClient):
     def __init__(self):
         self.client = self.init_client()
 

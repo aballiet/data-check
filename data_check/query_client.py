@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from models.table import TableSchema
+
 import pandas as pd
+from models.table import TableSchema
+
 
 class QueryClient(ABC):
-
     ###### ABSTRACT METHODS ######
     @abstractmethod
     def get_credentials(self):

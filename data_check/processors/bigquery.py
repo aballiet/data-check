@@ -1,10 +1,12 @@
-from query.query_bq import QueryBigQuery
 from data_processor import DataProcessor
 from models.table import TableSchema
+from query.query_bq import QueryBigQuery
+
 
 class BigQueryProcessor(DataProcessor):
-
-    def __init__(self, query1: str, query2: str, use_sql: bool, sampling_rate: int) -> None:
+    def __init__(
+        self, query1: str, query2: str, use_sql: bool, sampling_rate: int
+    ) -> None:
         super().__init__(query1, query2, use_sql, sampling_rate, QueryBigQuery())
 
     @property
@@ -43,8 +45,9 @@ class BigQueryProcessor(DataProcessor):
         """
         return query
 
-    def get_query_exclusive_primary_keys(self, exclusive_to: str, limit: int = 500) -> str:
-
+    def get_query_exclusive_primary_keys(
+        self, exclusive_to: str, limit: int = 500
+    ) -> str:
         common_table_schema = self.get_common_schema_from_tables()
 
         if exclusive_to == "table1":
@@ -88,9 +91,9 @@ class BigQueryProcessor(DataProcessor):
         return query
 
     def get_query_plain_diff_tables(
-    self,
-    common_table_schema: TableSchema,
-) -> str:
+        self,
+        common_table_schema: TableSchema,
+    ) -> str:
         """Create a SQL query to get the rows where the columns values are different"""
         cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
             prefix="", column_name_suffix="__1"

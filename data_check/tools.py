@@ -1,6 +1,7 @@
-from streamlit.runtime.scriptrunner import add_script_run_ctx
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Tuple
+
+from streamlit.runtime.scriptrunner import add_script_run_ctx
 
 
 # Run a list of jobs in parallel using multithreading. We want to be able to pass dedicated arguments to each job.

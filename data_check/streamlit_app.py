@@ -1,8 +1,9 @@
-import streamlit as st
-from streamlit_tags import st_tags
 import pandas as pd
+import streamlit as st
 from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
 from processors.bigquery import BigQueryProcessor
+from streamlit_tags import st_tags
+
 
 class DataDiff:
     def __init__(self) -> None:
@@ -29,9 +30,13 @@ class DataDiff:
         df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
         return df
 
-    def set_session_state_from_query_params(self, key: str, default_value: str, cast_as: str = None) -> str:
+    def set_session_state_from_query_params(
+        self, key: str, default_value: str, cast_as: str = None
+    ) -> str:
         if key not in st.session_state:
-            value_to_set = st.experimental_get_query_params().get(key, [default_value])[0]
+            value_to_set = st.experimental_get_query_params().get(key, [default_value])[
+                0
+            ]
             if cast_as == "int":
                 st.session_state[key] = int(value_to_set)
             elif cast_as == "list":
@@ -42,26 +47,36 @@ class DataDiff:
                 st.session_state[key] = value_to_set
 
     def init_from_query_params(self):
-
-        st.session_state.config_tables = (st.experimental_get_query_params().get("table1", [None])[0]) and st.experimental_get_query_params().get("table2", [None])[0]
+        st.session_state.config_tables = (
+            st.experimental_get_query_params().get("table1", [None])[0]
+        ) and st.experimental_get_query_params().get("table2", [None])[0]
 
         self.set_session_state_from_query_params("use_sql", "True", cast_as="bool")
 
-        self.set_session_state_from_query_params("table1",
-        '''SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
+        self.set_session_state_from_query_params(
+            "table1",
+            """SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
         FROM `gorgias-growth-production.dbt_activation.act_candu_ai_user_traits`
-        ''')
-        self.set_session_state_from_query_params("table2",
-        '''SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
+        """,
+        )
+        self.set_session_state_from_query_params(
+            "table2",
+            """SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
         FROM `gorgias-growth-production.dbt_activation.act_user_traits`
-        ''')
+        """,
+        )
         self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
         self.set_session_state_from_query_params("primary_key", "user_id")
 
-        self.set_session_state_from_query_params("columns_to_compare", None, cast_as="list")
+        self.set_session_state_from_query_params(
+            "columns_to_compare", None, cast_as="list"
+        )
         self.set_session_state_from_query_params("is_select_all", "False")
 
-        st.session_state.loaded_tables = st.experimental_get_query_params().get("columns_to_compare", [None])[0] or st.experimental_get_query_params().get("is_select_all", [None])[0]
+        st.session_state.loaded_tables = (
+            st.experimental_get_query_params().get("columns_to_compare", [None])[0]
+            or st.experimental_get_query_params().get("is_select_all", [None])[0]
+        )
 
     def update_first_step(self):
         st.session_state.use_sql = st.session_state.temp_use_sql
@@ -80,7 +95,12 @@ class DataDiff:
         st.session_state.loaded_tables = False
 
     def get_processor(self) -> BigQueryProcessor:
-        return BigQueryProcessor(query1=st.session_state.table1, query2=st.session_state.table2, use_sql=st.session_state.use_sql, sampling_rate=st.session_state.sampling_rate)
+        return BigQueryProcessor(
+            query1=st.session_state.table1,
+            query2=st.session_state.table2,
+            use_sql=st.session_state.use_sql,
+            sampling_rate=st.session_state.sampling_rate,
+        )
 
     def first_step(self):
         """First step of the app: select tables and sampling rate"""
@@ -155,13 +175,17 @@ class DataDiff:
         st.write("Columns exclusive to table 2 :")
         st.dataframe(diff_columns2, width=1400)
 
-        primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
+        primary_key_select_index = (
+            common_table_schema.columns_names.index(st.session_state.primary_key)
+            if st.session_state.primary_key in common_table_schema.columns_names
+            else None
+        )
 
         st.selectbox(
             "Select primary key:",
             common_table_schema.columns_names,
             key="temp_primary_key",
-            index=primary_key_select_index
+            index=primary_key_select_index,
         )
 
         st.multiselect(
@@ -191,18 +215,30 @@ class DataDiff:
                 self.second_step()
 
         processor = self.get_processor()
-        processor.set_config_data(primary_key=st.session_state.primary_key, columns_to_compare=st.session_state.columns_to_compare)
+        processor.set_config_data(
+            primary_key=st.session_state.primary_key,
+            columns_to_compare=st.session_state.columns_to_compare,
+        )
 
         if st.session_state.loaded_tables:
             # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
             st.write("Analyzing primary keys...")
             results_primary_keys = processor.run_query_compare_primary_keys()
 
-            st.dataframe(style_percentage(results_primary_keys, columns=["missing_primary_keys_ratio"]))
+            st.dataframe(
+                style_percentage(
+                    results_primary_keys, columns=["missing_primary_keys_ratio"]
+                )
+            )
 
-            if results_primary_keys["missing_primary_keys_ratio"].iloc[0] > 0 and st.button("Display exclusive primary keys for each table"):
+            if results_primary_keys["missing_primary_keys_ratio"].iloc[
+                0
+            ] > 0 and st.button("Display exclusive primary keys for each table"):
                 st.write("Displaying rows where primary keys are different...")
-                df_exlusive_table1, df_exlusive_table2 = processor.run_query_exclusive_primary_keys()
+                (
+                    df_exlusive_table1,
+                    df_exlusive_table2,
+                ) = processor.run_query_exclusive_primary_keys()
 
                 st.write("Exclusive to table 1 (showing first 500 rows) :")
                 st.dataframe(df_exlusive_table1)
@@ -220,7 +256,8 @@ class DataDiff:
 
             results_ratio_per_column.insert(0, "Select", False)
             df_with_selections = style_percentage(
-                results_ratio_per_column, columns=["percentage_diff_values", "ratio_not_null", "ratio_equal"]
+                results_ratio_per_column,
+                columns=["percentage_diff_values", "ratio_not_null", "ratio_equal"],
             )
             df_with_selections = style_gradient(
                 df_with_selections, columns=["percentage_diff_values"]

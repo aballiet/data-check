@@ -1,7 +1,8 @@
+from typing import List, Tuple
+
 import pandas as pd
-from pandas.io.formats.style import Styler
-from typing import Tuple, List
 import seaborn as sns
+from pandas.io.formats.style import Styler
 
 
 def style_percentage(data: Tuple[pd.DataFrame, Styler], columns) -> Styler:

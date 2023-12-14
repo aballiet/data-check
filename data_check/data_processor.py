@@ -1,13 +1,21 @@
-from models.table import TableSchema
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+
 import pandas as pd
-from tools import run_multithreaded
+from models.table import TableSchema
 from query_client import QueryClient
+from tools import run_multithreaded
+
 
 class DataProcessor(ABC):
-
-    def __init__(self, query1: str, query2: str, use_sql: bool, sampling_rate: int, client: QueryClient) -> None:
+    def __init__(
+        self,
+        query1: str,
+        query2: str,
+        use_sql: bool,
+        sampling_rate: int,
+        client: QueryClient,
+    ) -> None:
         self.sampling_rate = sampling_rate
         self.use_sql = use_sql
         self.client = client
@@ -104,7 +112,10 @@ class DataProcessor(ABC):
         """Get the schemas of two tables"""
         schema_table_1, schema_table_2 = self.get_schemas()
 
-        if schema_table_1.get_unsupported_fields() or schema_table_2.get_unsupported_fields():
+        if (
+            schema_table_1.get_unsupported_fields()
+            or schema_table_2.get_unsupported_fields()
+        ):
             import streamlit as st
 
             st.warning(
@@ -116,7 +127,9 @@ class DataProcessor(ABC):
         """Returns a mapping of columns that are different per table"""
         schema_table_1, schema_table_2 = self.get_schemas()
 
-        common_columns_names = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=True)
+        common_columns_names = schema_table_1.get_common_column_names(
+            schema_table_2, include_unsupported=True
+        )
         diff_columns_table_1 = [
             column
             for column in schema_table_1.columns
@@ -129,16 +142,23 @@ class DataProcessor(ABC):
             if column.name not in common_columns_names
             or column.field_type != schema_table_1.get_column(column.name).field_type
         ]
-        diff_1_table_schema = TableSchema(table_name="diff_1_table", columns=diff_columns_table_1)
-        diff_2_table_schema = TableSchema(table_name="diff_2_table", columns=diff_columns_table_2)
+        diff_1_table_schema = TableSchema(
+            table_name="diff_1_table", columns=diff_columns_table_1
+        )
+        diff_2_table_schema = TableSchema(
+            table_name="diff_2_table", columns=diff_columns_table_2
+        )
         return diff_1_table_schema.to_dataframe(), diff_2_table_schema.to_dataframe()
-
 
     def get_common_schema_from_tables(self) -> TableSchema:
         """Get the common schema of two tables"""
         schema_table_1, schema_table_2 = self.get_schemas_with_warning()
-        common_columns = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=False)
-        common_columns = [ schema_table_1.get_column(column) for column in common_columns ]
+        common_columns = schema_table_1.get_common_column_names(
+            schema_table_2, include_unsupported=False
+        )
+        common_columns = [
+            schema_table_1.get_column(column) for column in common_columns
+        ]
         return TableSchema(table_name="common_schema", columns=common_columns)
 
     def get_dataframes(
@@ -152,15 +172,15 @@ class DataProcessor(ABC):
         df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
         return df1, df2
 
-
-    def parse_strucutred_data(self, data: pd.DataFrame, keys: List[str], column: str = "values") -> pd.DataFrame:
+    def parse_strucutred_data(
+        self, data: pd.DataFrame, keys: List[str], column: str = "values"
+    ) -> pd.DataFrame:
         """Parse the structured data"""
         data = data.copy()
         for key in keys:
             data[key] = data[column].apply(lambda x: x[key])
         data.drop(columns=[column], inplace=True)
         return data
-
 
     def get_column_diff_ratios(
         self,
@@ -170,9 +190,13 @@ class DataProcessor(ABC):
         """Get the ratio of common values for each column"""
         filtered_columns = TableSchema(
             table_name="filtered_columns",
-            columns=[common_table_schema.get_column(column) for column in selected_columns],
+            columns=[
+                common_table_schema.get_column(column) for column in selected_columns
+            ],
         )
-        query = self.query_ratio_common_values_per_column(common_table_schema=filtered_columns)
+        query = self.query_ratio_common_values_per_column(
+            common_table_schema=filtered_columns
+        )
         df = self.client.run_query_to_dataframe(query)
         df = df.transpose().reset_index()
         df.columns = ["column", "values"]
@@ -180,10 +204,11 @@ class DataProcessor(ABC):
         df = self.parse_strucutred_data(df, keys=["ratio_not_null", "ratio_equal"])
         df["percentage_diff_values"] = 1 - df["ratio_equal"]
         df.sort_values(
-            by=["percentage_diff_values", "ratio_not_null"], ascending=False, inplace=True
+            by=["percentage_diff_values", "ratio_not_null"],
+            ascending=False,
+            inplace=True,
         )
         return df
-
 
     def get_plain_diff(
         self,
@@ -193,14 +218,15 @@ class DataProcessor(ABC):
         """Get the rows where the columns values are different"""
         filtered_columns = TableSchema(
             table_name="filtered_columns",
-            columns=[common_table_schema.get_column(column) for column in selected_columns],
+            columns=[
+                common_table_schema.get_column(column) for column in selected_columns
+            ],
         )
         query = self.get_query_plain_diff_tables(
             common_table_schema=filtered_columns,
         )
         df = self.client.run_query_to_dataframe(query)
         return df
-
 
     def run_query_compare_primary_keys(self) -> pd.DataFrame:
         """Compare the primary keys of two tables"""
@@ -210,9 +236,13 @@ class DataProcessor(ABC):
 
     def run_query_exclusive_primary_keys(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Get the rows where the primary keys are exclusive to one table"""
-        df_exclusive_table1 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(exclusive_to="table1"))
+        df_exclusive_table1 = self.client.run_query_to_dataframe(
+            self.get_query_exclusive_primary_keys(exclusive_to="table1")
+        )
         df_exclusive_table1.set_index(self.primary_key, inplace=True)
 
-        df_exclusive_table2 = self.client.run_query_to_dataframe(self.get_query_exclusive_primary_keys(exclusive_to="table2"))
+        df_exclusive_table2 = self.client.run_query_to_dataframe(
+            self.get_query_exclusive_primary_keys(exclusive_to="table2")
+        )
         df_exclusive_table2.set_index(self.primary_key, inplace=True)
         return df_exclusive_table1, df_exclusive_table2
