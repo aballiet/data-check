@@ -242,7 +242,7 @@ class DataProcessor(ABC):
         self,
         selected_columns: List[str],
         common_table_schema: TableSchema,
-    ) -> pd.DataFrame:
+    ) -> Tuple[str, pd.DataFrame]:
         """Get the rows where the columns values are different"""
         filtered_columns = TableSchema(
             table_name="filtered_columns",
@@ -254,7 +254,7 @@ class DataProcessor(ABC):
             common_table_schema=filtered_columns,
         )
         df = self.client.run_query_to_dataframe(query)
-        return df
+        return query, df
 
     def run_query_compare_primary_keys(self) -> pd.DataFrame:
         """Compare the primary keys of two tables"""
