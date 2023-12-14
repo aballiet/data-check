@@ -26,6 +26,11 @@ class QueryClient(ABC):
         pass
 
     @abstractmethod
-    def get_table_schema(self, table: str) -> TableSchema:
+    def get_table_schema_from_table(self, table: str) -> TableSchema:
         """Get the schema from an existing table or view"""
+        pass
+
+    @abstractmethod
+    def get_table_schema_from_sql(self, query: str) -> TableSchema:
+        """Get the schema of a table from a query"""
         pass

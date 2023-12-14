@@ -124,3 +124,14 @@ class TableSchema:
                 )
             )
         return TableSchema(table_name=table.table_id, columns=columns)
+
+    @classmethod
+    def from_bq_query_job(cls, query_job: bigquery.QueryJob):
+        columns = []
+        for field in query_job.schema:
+            columns.append(
+                ColumnSchema(
+                    name=field.name, field_type=field.field_type, mode=field.mode
+                )
+            )
+        return TableSchema(table_name="query_result", columns=columns)

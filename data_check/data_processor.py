@@ -86,16 +86,23 @@ class DataProcessor(ABC):
         pass
 
     ###### METHODS ######
+    def get_schemas(self) -> Tuple[TableSchema, TableSchema]:
+        if self.use_sql:
+            schema_table_1 = self.client.get_table_schema_from_sql(self.query1)
+            schema_table_2 = self.client.get_table_schema_from_sql(self.query2)
+        else:
+            schema_table_1 = self.client.get_table_schema_from_table(self.table1)
+            schema_table_2 = self.client.get_table_schema_from_table(self.table2)
+        return schema_table_1, schema_table_2
+
     def get_table_columns(self) -> Tuple[List[str], List[str]]:
         """Get the columns of two tables"""
-        schema_table_1 = self.client.get_table_schema(self.table1)
-        schema_table_2 = self.client.get_table_schema(self.table2)
+        schema_table_1, schema_table_2 = self.get_schemas()
         return schema_table_1.columns_names, schema_table_2.columns_names
 
-    def get_table_schemas_warning(self) -> Tuple[TableSchema, TableSchema]:
+    def get_schemas_with_warning(self) -> Tuple[TableSchema, TableSchema]:
         """Get the schemas of two tables"""
-        schema_table_1 = self.client.get_table_schema(self.table1)
-        schema_table_2 = self.client.get_table_schema(self.table2)
+        schema_table_1, schema_table_2 = self.get_schemas()
 
         if schema_table_1.get_unsupported_fields() or schema_table_2.get_unsupported_fields():
             import streamlit as st
@@ -105,8 +112,10 @@ class DataProcessor(ABC):
             )
         return schema_table_1, schema_table_2
 
-    def get_diff_columns(self, schema_table_1: TableSchema, schema_table_2: TableSchema) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def get_diff_columns(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Returns a mapping of columns that are different per table"""
+        schema_table_1, schema_table_2 = self.get_schemas()
+
         common_columns_names = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=True)
         diff_columns_table_1 = [
             column
@@ -127,11 +136,10 @@ class DataProcessor(ABC):
 
     def get_common_schema_from_tables(self) -> TableSchema:
         """Get the common schema of two tables"""
-        schema_table_1, schema_table_2 = self.get_table_schemas_warning()
+        schema_table_1, schema_table_2 = self.get_schemas_with_warning()
         common_columns = schema_table_1.get_common_column_names(schema_table_2, include_unsupported=False)
         common_columns = [ schema_table_1.get_column(column) for column in common_columns ]
         return TableSchema(table_name="common_schema", columns=common_columns)
-
 
     def get_dataframes(
         self, table1: str, table2: str, columns: list[str]

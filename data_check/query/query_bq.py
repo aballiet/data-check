@@ -3,7 +3,6 @@ from query_client import QueryClient
 import streamlit as st
 from google.cloud import bigquery
 from models.table import TableSchema
-from pandas_gbq import read_gbq
 from google.oauth2 import service_account
 from os import getenv
 
@@ -35,11 +34,11 @@ class QueryBigQuery(QueryClient):
 
     @st.cache_data(ttl=600)
     def run_query_to_dataframe(_self, query: str) -> pd.DataFrame:
-        if not USE_STREAMLIT_SECRET:
-            return read_gbq(query)
+        return _self.run_query_job(query).to_dataframe()
 
-        credentials = _self.get_credentials()
-        return read_gbq(query, credentials=credentials)
+    def run_query_job(_self, query: str) -> bigquery.QueryJob:
+        query_job = _self.client.query(query)
+        return query_job.result()
 
     def query_table(_self, table: str, columns: list[str]) -> pd.DataFrame:
         columns = ", ".join(columns)
@@ -50,7 +49,14 @@ class QueryBigQuery(QueryClient):
         """
         return _self.run_query_to_dataframe(query=query)
 
-    def get_table_schema(self, table: str) -> TableSchema:
+    @st.cache_data(ttl=30)
+    def get_table_schema_from_table(_self, table: str) -> TableSchema:
         """Get the schema of a table"""
-        table_bq = self.client.get_table(table)
+        table_bq = _self.client.get_table(table)
         return TableSchema.from_bq_table(table=table_bq)
+
+    @st.cache_data(ttl=30)
+    def get_table_schema_from_sql(_self, query: str) -> TableSchema:
+        """Get the schema of a table from a query"""
+        query_job = _self.run_query_job(query)
+        return TableSchema.from_bq_query_job(query_job)

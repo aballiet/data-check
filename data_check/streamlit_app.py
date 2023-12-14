@@ -117,23 +117,16 @@ class DataDiff:
     def update_second_step(self):
         st.session_state.is_select_all = st.session_state.temp_is_select_all
 
-        processor = self.get_processor()
+        st.session_state.primary_key = st.session_state.temp_primary_key
 
-        if processor.use_sql:
-            st.session_state.columns_to_compare = ["all"]
-            st.session_state.primary_key = st.session_state.temp_primary_key[0]
-
+        if st.session_state.is_select_all:
+            st.session_state.columns_to_compare = (
+                st.session_state.common_table_schema.columns_names
+            )
         else:
-            st.session_state.primary_key = st.session_state.temp_primary_key
-
-            if st.session_state.is_select_all:
-                st.session_state.columns_to_compare = (
-                    st.session_state.common_table_schema.columns_names
-                )
-            else:
-                st.session_state.columns_to_compare = (
-                    st.session_state.temp_columns_to_compare
-                )
+            st.session_state.columns_to_compare = (
+                st.session_state.temp_columns_to_compare
+            )
 
         st.experimental_set_query_params(
             sampling_rate=st.session_state.sampling_rate,
@@ -150,51 +143,39 @@ class DataDiff:
         """Second step of the app: select primary key and columns to compare"""
         processor = self.get_processor()
 
-        if not processor.use_sql:
-            st.write("Retrieving list of common columns...")
+        st.write("Retrieving list of common columns...")
 
-            common_table_schema = processor.get_common_schema_from_tables()
-            st.session_state.common_table_schema = common_table_schema
+        common_table_schema = processor.get_common_schema_from_tables()
+        st.session_state.common_table_schema = common_table_schema
 
-            taschema_table_1 = processor.client.get_table_schema(processor.table1)
-            schema_table_2 = processor.client.get_table_schema(processor.table2)
-            diff_columns1, diff_columns2 = processor.get_diff_columns(taschema_table_1, schema_table_2)
+        diff_columns1, diff_columns2 = processor.get_diff_columns()
 
-            st.write("Columns exclusive to table 1 :")
-            st.dataframe(diff_columns1, width=1400)
-            st.write("Columns exclusive to table 2 :")
-            st.dataframe(diff_columns2, width=1400)
+        st.write("Columns exclusive to table 1 :")
+        st.dataframe(diff_columns1, width=1400)
+        st.write("Columns exclusive to table 2 :")
+        st.dataframe(diff_columns2, width=1400)
 
-            primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
+        primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
 
-            st.selectbox(
-                "Select primary key:",
-                common_table_schema.columns_names,
-                key="temp_primary_key",
-                index=primary_key_select_index
-            )
+        st.selectbox(
+            "Select primary key:",
+            common_table_schema.columns_names,
+            key="temp_primary_key",
+            index=primary_key_select_index
+        )
 
-            st.multiselect(
-                "Select columns to compare:",
-                common_table_schema.columns_names,
-                key="temp_columns_to_compare",
-                default=st.session_state.columns_to_compare,
-            )
+        st.multiselect(
+            "Select columns to compare:",
+            common_table_schema.columns_names,
+            key="temp_columns_to_compare",
+            default=st.session_state.columns_to_compare,
+        )
 
-            st.checkbox(
-                "Select all",
-                key="temp_is_select_all",
-                value=str(st.session_state.is_select_all).lower() == "true",
-            )
-        else:
-            st.write("As you are using SQL, you need to specify the primary key and columns to compare manually.")
-            st_tags(value=[], label="Select primary key:", key="temp_primary_key", text="Press enter to add a column", maxtags=1)
-            st.checkbox(
-                "Compare all common columns",
-                key="temp_is_select_all",
-                value=True,
-                disabled=True
-            )
+        st.checkbox(
+            "Select all",
+            key="temp_is_select_all",
+            value=str(st.session_state.is_select_all).lower() == "true",
+        )
 
         st.form_submit_button(label="OK", on_click=self.update_second_step)
 
