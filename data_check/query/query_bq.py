@@ -29,11 +29,11 @@ class QueryBigQuery(QueryClient):
         credentials = _self.get_credentials()
         return bigquery.Client(credentials=credentials)
 
-    @st.cache_data(ttl=600)
+    @st.cache_data(ttl=30)
     def get_table(self, table: str) -> bigquery.Table:
         return self.client.get_table(table)
 
-    @st.cache_data(ttl=600)
+    @st.cache_data(ttl=30)
     def run_query_to_dataframe(_self, query: str) -> pd.DataFrame:
         return _self.run_query_job(query).to_dataframe()
 
