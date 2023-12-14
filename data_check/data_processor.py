@@ -12,32 +12,38 @@ class DataProcessor(ABC):
         self,
         query1: str,
         query2: str,
-        use_sql: bool,
-        sampling_rate: int,
         client: QueryClient,
     ) -> None:
-        self.sampling_rate = sampling_rate
-        self.use_sql = use_sql
         self.client = client
 
-        if not self.use_sql:
-            self._table1 = query1
-            self._table2 = query2
-            self.query1 = self.get_sql_from_tablename(query1)
-            self.query2 = self.get_sql_from_tablename(query2)
-        else:
+        self.use_sql_query1 = False
+        self.use_sql_query2 = False
+
+        if self.check_input_is_sql(query1):
+            self.use_sql_query1 = True
             self.query1 = query1
-            self.query2 = query2
             self._table1 = None
+        else:
+            self.query1 = self.get_sql_from_tablename(query1)
+            self._table1 = query1.strip()
+
+        if  self.check_input_is_sql(query2):
+            self.use_sql_query2 = True
+            self.query2 = query2
             self._table2 = None
+        else:
+            self.query2 = self.get_sql_from_tablename(query2)
+            self._table2 = query2.strip()
 
         # Needed for full diff
         self._primary_key = None
         self._columns_to_compare = None
+        self._sampling_rate = None
 
-    def set_config_data(self, primary_key: str, columns_to_compare: List[str]):
+    def set_config_data(self, primary_key: str, columns_to_compare: List[str], sampling_rate: int):
         self._primary_key = primary_key
         self._columns_to_compare = columns_to_compare
+        self._sampling_rate = sampling_rate
 
     @property
     def primary_key(self) -> str:
@@ -62,6 +68,22 @@ class DataProcessor(ABC):
         if self._table2 is None:
             raise ValueError("table2 is not set")
         return self._table2
+
+    @property
+    def sampling_rate(self) -> int:
+        if self._sampling_rate is None:
+            raise ValueError("sampling_rate is not set")
+        return self._sampling_rate
+
+    @property
+    def is_sampling_allowed(self) -> bool:
+        """Returns True if sampling is allowed"""
+        return (not self.use_sql_query1) and (not self.use_sql_query2)
+
+    @abstractmethod
+    def check_input_is_sql(self, value: str) -> bool:
+        """Check if the input is a SQL query"""
+        pass
 
     @abstractmethod
     def get_sql_from_tablename(self, tablename: str) -> str:
@@ -95,12 +117,16 @@ class DataProcessor(ABC):
 
     ###### METHODS ######
     def get_schemas(self) -> Tuple[TableSchema, TableSchema]:
-        if self.use_sql:
+        if self.use_sql_query1:
             schema_table_1 = self.client.get_table_schema_from_sql(self.query1)
-            schema_table_2 = self.client.get_table_schema_from_sql(self.query2)
         else:
             schema_table_1 = self.client.get_table_schema_from_table(self.table1)
+
+        if self.use_sql_query2:
+            schema_table_2 = self.client.get_table_schema_from_sql(self.query2)
+        else:
             schema_table_2 = self.client.get_table_schema_from_table(self.table2)
+
         return schema_table_1, schema_table_2
 
     def get_table_columns(self) -> Tuple[List[str], List[str]]:

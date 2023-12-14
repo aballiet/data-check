@@ -5,9 +5,9 @@ from query.query_bq import QueryBigQuery
 
 class BigQueryProcessor(DataProcessor):
     def __init__(
-        self, query1: str, query2: str, use_sql: bool, sampling_rate: int
+        self, query1: str, query2: str
     ) -> None:
-        super().__init__(query1, query2, use_sql, sampling_rate, QueryBigQuery())
+        super().__init__(query1, query2, QueryBigQuery())
 
     @property
     def with_statement(self) -> str:
@@ -16,6 +16,10 @@ class BigQueryProcessor(DataProcessor):
             table1 as ({self.query1}),
             table2 as ({self.query2})
         """
+
+    def check_input_is_sql(self, value: str) -> bool:
+        """Check if the input is a SQL query"""
+        return " select " in (" " + value).lower() and "from " in value.lower()
 
     def get_sql_from_tablename(self, tablename: str) -> str:
         return f"select * from `{tablename}`"

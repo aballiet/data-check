@@ -50,8 +50,6 @@ class DataDiff:
             st.experimental_get_query_params().get("table1", [None])[0]
         ) and st.experimental_get_query_params().get("table2", [None])[0]
 
-        self.set_session_state_from_query_params("use_sql", "True", cast_as="bool")
-
         self.set_session_state_from_query_params(
             "table1",
             """SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
@@ -78,16 +76,13 @@ class DataDiff:
         )
 
     def update_first_step(self):
-        st.session_state.use_sql = st.session_state.temp_use_sql
         st.session_state.table1 = st.session_state.temp_table_1
         st.session_state.table2 = st.session_state.temp_table_2
-        st.session_state.sampling_rate = st.session_state.temp_sampling_rate
 
         st.experimental_set_query_params(
             sampling_rate=st.session_state.sampling_rate,
             table1=st.session_state.table1,
             table2=st.session_state.table2,
-            use_sql=st.session_state.use_sql,
         )
 
         st.session_state.config_tables = True
@@ -97,46 +92,29 @@ class DataDiff:
         return BigQueryProcessor(
             query1=st.session_state.table1,
             query2=st.session_state.table2,
-            use_sql=st.session_state.use_sql,
-            sampling_rate=st.session_state.sampling_rate,
         )
 
     def first_step(self):
         """First step of the app: select tables and sampling rate"""
 
-        st.toggle(
-            "Use SQL",
-            value="True" if st.session_state.use_sql else "False",
-            key="temp_use_sql",
-        )
-
         st.text_area(
-            "Table 1",
+            "Table or SQL Query 1",
             value=st.session_state["table1"],
             key="temp_table_1",
         )
 
         st.text_area(
-            "Table 2",
+            "Table or SQL Query 2",
             value=st.session_state["table2"],
             key="temp_table_2",
-        )
-
-        st.slider(
-            "Data sampling",
-            min_value=10,
-            max_value=100,
-            step=1,
-            key="temp_sampling_rate",
-            value=st.session_state["sampling_rate"],
         )
 
         st.form_submit_button(label="OK", on_click=self.update_first_step)
 
     def update_second_step(self):
         st.session_state.is_select_all = st.session_state.temp_is_select_all
-
         st.session_state.primary_key = st.session_state.temp_primary_key
+        st.session_state.sampling_rate = st.session_state.temp_sampling_rate
 
         if st.session_state.is_select_all:
             st.session_state.columns_to_compare = (
@@ -161,8 +139,6 @@ class DataDiff:
     def second_step(self):
         """Second step of the app: select primary key and columns to compare"""
         processor = self.get_processor()
-
-        st.write("Retrieving list of common columns...")
 
         common_table_schema = processor.get_common_schema_from_tables()
         st.session_state.common_table_schema = common_table_schema
@@ -200,6 +176,16 @@ class DataDiff:
             value=str(st.session_state.is_select_all).lower() == "true",
         )
 
+        st.slider(
+            "Data sampling (only avaible for direct tables as input)",
+            min_value=10,
+            max_value=100,
+            step=1,
+            key="temp_sampling_rate",
+            value=100 if not processor.is_sampling_allowed else st.session_state.sampling_rate,
+            disabled=(not processor.is_sampling_allowed)
+        )
+
         st.form_submit_button(label="OK", on_click=self.update_second_step)
 
     def window(self):
@@ -217,6 +203,7 @@ class DataDiff:
         processor.set_config_data(
             primary_key=st.session_state.primary_key,
             columns_to_compare=st.session_state.columns_to_compare,
+            sampling_rate=st.session_state.sampling_rate,
         )
 
         if st.session_state.loaded_tables:
