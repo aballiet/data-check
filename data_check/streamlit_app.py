@@ -276,7 +276,7 @@ class DataDiff:
 
                 st.write(f"Displaying rows where {columns_to_display} is different...")
 
-                dataset = processor.get_plain_diff(
+                query, dataset = processor.get_plain_diff(
                     selected_columns=columns_to_display,
                     common_table_schema=st.session_state.common_table_schema,
                 )
@@ -324,7 +324,8 @@ class DataDiff:
                     ),
                     use_container_width=True,
                 )
-
+                st.title("Diff SQL query")
+                st.code(query, language="sql")
 
 if __name__ == "__main__":
     dd = DataDiff()
