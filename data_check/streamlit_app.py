@@ -50,12 +50,10 @@ class DataDiff:
         self.set_session_state_from_query_params("table1",
         '''SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
         FROM `gorgias-growth-production.dbt_activation.act_candu_ai_user_traits`
-        LIMIT 1000
         ''')
         self.set_session_state_from_query_params("table2",
         '''SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
-        FROM `gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits`
-        LIMIT 1000
+        FROM `gorgias-growth-production.dbt_activation.act_user_traits`
         ''')
         self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
         self.set_session_state_from_query_params("primary_key", "user_id")
