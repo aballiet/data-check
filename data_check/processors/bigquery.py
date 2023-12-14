@@ -43,7 +43,7 @@ class BigQueryProcessor(DataProcessor):
         """
         return query
 
-    def get_query_exclusive_primary_keys(self, exclusive_to: str) -> str:
+    def get_query_exclusive_primary_keys(self, exclusive_to: str, limit: int = 500) -> str:
 
         common_table_schema = self.get_common_schema_from_tables()
 
@@ -64,6 +64,7 @@ class BigQueryProcessor(DataProcessor):
             from table1
             left join table2 using ({self.primary_key})
             where table2.{self.primary_key} is null
+            limit {limit}
             """
 
         else:
@@ -82,6 +83,7 @@ class BigQueryProcessor(DataProcessor):
             from table2
             left join table1 using ({self.primary_key})
             where table1.{self.primary_key} is null
+            limit {limit}
             """
         return query
 
