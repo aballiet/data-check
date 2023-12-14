@@ -1,15 +1,7 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
-from data_helpers import (
-    run_query_compare_primary_keys,
-    get_column_diff_ratios,
-    get_common_schema,
-    get_plain_diff,
-    run_query_exclusive_primary_keys,
-    get_diff_columns,
-    get_tables_schemas,
-)
+from processors.bigquery import BigQueryProcessor
 
 
 class DataDiff:
@@ -20,8 +12,10 @@ class DataDiff:
         self.primary_key: str = None
         self.columns_to_compare: str = None
 
+        self.processor: BigQueryProcessor = None
+
         st.set_page_config(layout="wide")
-        st.title("data-diff homemade 🏠")
+        st.title("data-check 🔍")
 
         self.init_from_query_params()
 
@@ -35,71 +29,95 @@ class DataDiff:
         df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
         return df
 
-    def set_session_state_from_query_params(self, key: str, default_value: str, cast_as: str = None) -> str:
+    def set_session_state_from_query_params(
+        self, key: str, default_value: str, cast_as: str = None
+    ) -> str:
         if key not in st.session_state:
-            value_to_set = st.experimental_get_query_params().get(key, [default_value])[0]
+            value_to_set = st.experimental_get_query_params().get(key, [default_value])[
+                0
+            ]
             if cast_as == "int":
                 st.session_state[key] = int(value_to_set)
             elif cast_as == "list":
                 st.session_state[key] = value_to_set.split(",") if value_to_set else []
+            elif cast_as == "bool":
+                st.session_state[key] = str(value_to_set).lower() == "true"
             else:
                 st.session_state[key] = value_to_set
 
     def init_from_query_params(self):
-        self.set_session_state_from_query_params("table1", "gorgias-growth-production.dbt_activation.act_candu_ai_user_traits")
-        self.set_session_state_from_query_params("table2", "gorgias-growth-development.dbt_development_antoineballiet.act_candu_ai_user_traits")
+        st.session_state.config_tables = (
+            st.experimental_get_query_params().get("table1", [None])[0]
+        ) and st.experimental_get_query_params().get("table2", [None])[0]
+
+        self.set_session_state_from_query_params(
+            "table1",
+            """SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
+        FROM `gorgias-growth-production.dbt_activation.act_candu_ai_user_traits`
+        """,
+        )
+        self.set_session_state_from_query_params(
+            "table2",
+            """SELECT user_id, account_aao_automation_rate_28, account_aao_automation_rate_28_round
+        FROM `gorgias-growth-production.dbt_activation.act_user_traits`
+        """,
+        )
         self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
         self.set_session_state_from_query_params("primary_key", "user_id")
 
-        st.session_state.config_tables = st.experimental_get_query_params().get("table1", [None])[0] and st.experimental_get_query_params().get("table2", [None])[0]
-
-        self.set_session_state_from_query_params("columns_to_compare", None, cast_as="list")
+        self.set_session_state_from_query_params(
+            "columns_to_compare", None, cast_as="list"
+        )
         self.set_session_state_from_query_params("is_select_all", "False")
 
-        st.session_state.loaded_tables = st.experimental_get_query_params().get("columns_to_compare", [None])[0] or st.experimental_get_query_params().get("is_select_all", [None])[0]
+        st.session_state.loaded_tables = (
+            st.experimental_get_query_params().get("columns_to_compare", [None])[0]
+            or st.experimental_get_query_params().get("is_select_all", [None])[0]
+        )
 
     def update_first_step(self):
         st.session_state.table1 = st.session_state.temp_table_1
         st.session_state.table2 = st.session_state.temp_table_2
-        st.session_state.sampling_rate = st.session_state.temp_sampling_rate
 
         st.experimental_set_query_params(
             sampling_rate=st.session_state.sampling_rate,
             table1=st.session_state.table1,
-            table2=st.session_state.table2
-            )
+            table2=st.session_state.table2,
+        )
 
         st.session_state.config_tables = True
+        st.session_state.is_select_all = None
+        st.session_state.columns_to_compare = None
+
         st.session_state.loaded_tables = False
 
-    def first_step(self):
+    def get_processor(self) -> BigQueryProcessor:
+        return BigQueryProcessor(
+            query1=st.session_state.table1,
+            query2=st.session_state.table2,
+        )
 
+    def first_step(self):
         """First step of the app: select tables and sampling rate"""
-        st.text_input(
-            "Table 1",
+
+        st.text_area(
+            "Table or SQL Query 1",
             value=st.session_state["table1"],
             key="temp_table_1",
         )
-        st.text_input(
-            "Table 2",
+
+        st.text_area(
+            "Table or SQL Query 2",
             value=st.session_state["table2"],
             key="temp_table_2",
-        )
-
-        st.slider(
-            "Data sampling",
-            min_value=10,
-            max_value=100,
-            step=1,
-            key="temp_sampling_rate",
-            value=st.session_state["sampling_rate"],
         )
 
         st.form_submit_button(label="OK", on_click=self.update_first_step)
 
     def update_second_step(self):
-        st.session_state.primary_key = st.session_state.temp_primary_key
         st.session_state.is_select_all = st.session_state.temp_is_select_all
+        st.session_state.primary_key = st.session_state.temp_primary_key
+        st.session_state.sampling_rate = st.session_state.temp_sampling_rate
 
         if st.session_state.is_select_all:
             st.session_state.columns_to_compare = (
@@ -123,27 +141,29 @@ class DataDiff:
 
     def second_step(self):
         """Second step of the app: select primary key and columns to compare"""
-        st.write("Retrieving list of common columns...")
+        processor = self.get_processor()
 
-        common_table_schema = get_common_schema(
-            st.session_state.table1, st.session_state.table2
-        )
+        common_table_schema = processor.get_common_schema_from_tables()
         st.session_state.common_table_schema = common_table_schema
 
-        taschema_table_1, schema_table_2 = get_tables_schemas(table1=st.session_state.table1, table2=st.session_state.table2)
-        diff_columns1, diff_columns2 = get_diff_columns(taschema_table_1, schema_table_2)
+        diff_columns1, diff_columns2 = processor.get_diff_columns()
+
         st.write("Columns exclusive to table 1 :")
         st.dataframe(diff_columns1, width=1400)
         st.write("Columns exclusive to table 2 :")
         st.dataframe(diff_columns2, width=1400)
 
-        primary_key_select_index = common_table_schema.columns_names.index(st.session_state.primary_key) if st.session_state.primary_key in common_table_schema.columns_names else None
+        primary_key_select_index = (
+            common_table_schema.columns_names.index(st.session_state.primary_key)
+            if st.session_state.primary_key in common_table_schema.columns_names
+            else None
+        )
 
         st.selectbox(
             "Select primary key:",
             common_table_schema.columns_names,
             key="temp_primary_key",
-            index=primary_key_select_index
+            index=primary_key_select_index,
         )
 
         st.multiselect(
@@ -159,6 +179,18 @@ class DataDiff:
             value=str(st.session_state.is_select_all).lower() == "true",
         )
 
+        st.slider(
+            "Data sampling (only avaible for direct tables as input)",
+            min_value=10,
+            max_value=100,
+            step=1,
+            key="temp_sampling_rate",
+            value=100
+            if not processor.is_sampling_allowed
+            else st.session_state.sampling_rate,
+            disabled=(not processor.is_sampling_allowed),
+        )
+
         st.form_submit_button(label="OK", on_click=self.update_second_step)
 
     def window(self):
@@ -172,41 +204,51 @@ class DataDiff:
             with st.form(key="second_step"):
                 self.second_step()
 
+        processor = self.get_processor()
+        processor.set_config_data(
+            primary_key=st.session_state.primary_key,
+            columns_to_compare=st.session_state.columns_to_compare,
+            sampling_rate=st.session_state.sampling_rate,
+        )
+
         if st.session_state.loaded_tables:
             # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
             st.write("Analyzing primary keys...")
-            results_primary_keys = run_query_compare_primary_keys(
-                st.session_state.table1,
-                st.session_state.table2,
-                st.session_state.primary_key,
+            results_primary_keys = processor.run_query_compare_primary_keys()
+
+            st.dataframe(
+                style_percentage(
+                    results_primary_keys, columns=["missing_primary_keys_ratio"]
+                )
             )
-            st.dataframe(style_percentage(results_primary_keys, columns=["missing_primary_keys_ratio"]))
 
-            if results_primary_keys["missing_primary_keys_ratio"].iloc[0] > 0 and st.button("Display exclusive primary keys for each table"):
+            if results_primary_keys["missing_primary_keys_ratio"].iloc[
+                0
+            ] > 0 and st.button("Display exclusive primary keys for each table"):
                 st.write("Displaying rows where primary keys are different...")
-                df_exlusive_table1, df_exlusive_table2 = run_query_exclusive_primary_keys(table1=st.session_state.table1, table2=st.session_state.table2, primary_key=st.session_state.primary_key)
+                (
+                    df_exlusive_table1,
+                    df_exlusive_table2,
+                ) = processor.run_query_exclusive_primary_keys()
 
-                st.write("Exclusive to table 1 :")
+                st.write("Exclusive to table 1 (showing first 500 rows) :")
                 st.dataframe(df_exlusive_table1)
 
-                st.write("Exclusive to table 2 :")
+                st.write("Exclusive to table 2 (showing first 500 rows) :")
                 st.dataframe(df_exlusive_table2)
 
             st.write("Computing difference ratio...")
-            results_ratio_per_column = get_column_diff_ratios(
-                table1=st.session_state.table1,
-                table2=st.session_state.table2,
-                primary_key=st.session_state.primary_key,
+            results_ratio_per_column = processor.get_column_diff_ratios(
                 selected_columns=st.session_state.columns_to_compare,
                 common_table_schema=st.session_state.common_table_schema,
-                sampling_rate=st.session_state.sampling_rate,
             )
 
             origin_columns = results_ratio_per_column.columns
 
             results_ratio_per_column.insert(0, "Select", False)
             df_with_selections = style_percentage(
-                results_ratio_per_column, columns=["percentage_diff_values", "ratio_not_null", "ratio_not_equal"]
+                results_ratio_per_column,
+                columns=["percentage_diff_values", "ratio_not_null", "ratio_equal"],
             )
             df_with_selections = style_gradient(
                 df_with_selections, columns=["percentage_diff_values"]
@@ -234,13 +276,9 @@ class DataDiff:
 
                 st.write(f"Displaying rows where {columns_to_display} is different...")
 
-                dataset = get_plain_diff(
-                    table1=st.session_state.table1,
-                    table2=st.session_state.table2,
-                    primary_key=st.session_state.primary_key,
+                dataset = processor.get_plain_diff(
                     selected_columns=columns_to_display,
                     common_table_schema=st.session_state.common_table_schema,
-                    sampling_rate=st.session_state.sampling_rate,
                 )
 
                 top_menu = st.columns(3)

@@ -1,0 +1,16 @@
+{
+    "version": "0.1.0",
+    "configurations": [
+        {
+            "name": "debug streamlit",
+            "type": "python",
+            "request": "launch",
+            "python": "/Users/antoineballiet/Documents/GitHub/data-check/.venv/bin/python",
+            "program": "/Users/antoineballiet/Documents/GitHub/data-check/.venv/bin/streamlit",
+            "args": [
+                "run",
+                "data_check/streamlit_app.py"
+            ]
+        }
+    ]
+}

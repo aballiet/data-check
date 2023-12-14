@@ -1,5 +1,4 @@
 .venv
-.vscode
 
 # Streamlit secrets file
 */*/secrets.toml

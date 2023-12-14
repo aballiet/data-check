@@ -2,7 +2,7 @@ from data_check.data_processor import (
     get_query_plain_diff_tables,
     query_ratio_common_values_per_column,
 )
-from data_check.models.table import TableSchema, ColumnSchema
+from data_check.models.table import ColumnSchema, TableSchema
 
 
 def test_get_query_plain_diff_tables():

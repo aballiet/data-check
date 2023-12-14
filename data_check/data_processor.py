@@ -1,144 +1,276 @@
+from abc import ABC, abstractmethod
+from typing import List, Tuple
+
+import pandas as pd
 from models.table import TableSchema
+from query_client import QueryClient
+from tools import run_multithreaded
 
 
-# Create a query to compare two tables common and exlusive primary keys for two tables
-def get_query_insight_tables_primary_keys(table1: str, table2: str, primary_key: str) -> str:
-    """Compare the primary keys of two tables"""
-    query = f"""
-        with
+class DataProcessor(ABC):
+    def __init__(
+        self,
+        query1: str,
+        query2: str,
+        client: QueryClient,
+    ) -> None:
+        self.client = client
 
-        agg_diff_keys as (
-            select
-                count(*) as total_rows
-                , countif(table1.{primary_key} is null) as missing_primary_key_in_table1
-                , countif(table2.{primary_key} is null) as missing_primary_key_in_table2
-            from `{table1}` as table1
-            full outer join `{table2}` as table2
-            using ({primary_key})
+        self.use_sql_query1 = False
+        self.use_sql_query2 = False
+
+        if self.check_input_is_sql(query1):
+            self.use_sql_query1 = True
+            self.query1 = query1
+            self._table1 = None
+        else:
+            self._table1 = query1.strip().strip("\r\n")
+            self.query1 = self.get_sql_from_tablename(self._table1)
+
+        if self.check_input_is_sql(query2):
+            self.use_sql_query2 = True
+            self.query2 = query2
+            self._table2 = None
+        else:
+            self._table2 = query2.strip().strip("\r\n")
+            self.query2 = self.get_sql_from_tablename(self._table2)
+
+        # Needed for full diff
+        self._primary_key = None
+        self._columns_to_compare = None
+        self._sampling_rate = None
+
+    def set_config_data(
+        self, primary_key: str, columns_to_compare: List[str], sampling_rate: int
+    ):
+        self._primary_key = primary_key
+        self._columns_to_compare = columns_to_compare
+        self._sampling_rate = sampling_rate
+
+    @property
+    def primary_key(self) -> str:
+        if self._primary_key is None:
+            raise ValueError("primary_key is not set")
+        return self._primary_key
+
+    @property
+    def columns_to_compare(self) -> List[str]:
+        if self._columns_to_compare is None:
+            raise ValueError("columns_to_compare is not set")
+        return self._columns_to_compare
+
+    @property
+    def table1(self) -> str:
+        if self._table1 is None:
+            raise ValueError("table1 is not set")
+        return self._table1
+
+    @property
+    def table2(self) -> str:
+        if self._table2 is None:
+            raise ValueError("table2 is not set")
+        return self._table2
+
+    @property
+    def sampling_rate(self) -> int:
+        if self._sampling_rate is None:
+            raise ValueError("sampling_rate is not set")
+        return self._sampling_rate
+
+    @property
+    def is_sampling_allowed(self) -> bool:
+        """Returns True if sampling is allowed"""
+        return (not self.use_sql_query1) and (not self.use_sql_query2)
+
+    @abstractmethod
+    def check_input_is_sql(self, value: str) -> bool:
+        """Check if the input is a SQL query"""
+        pass
+
+    @abstractmethod
+    def get_sql_from_tablename(self, tablename: str) -> str:
+        """Get the SQL query from a table name"""
+        pass
+
+    @abstractmethod
+    def get_query_insight_tables_primary_keys(self) -> str:
+        """Compare the primary keys of two tables"""
+        pass
+
+    @abstractmethod
+    def get_query_exclusive_primary_keys(self, exclusive_to: str) -> str:
+        pass
+
+    @abstractmethod
+    def get_query_plain_diff_tables(
+        self,
+        common_table_schema: TableSchema,
+    ) -> str:
+        """Create a SQL query to get the rows where the columns values are different"""
+        pass
+
+    @abstractmethod
+    def query_ratio_common_values_per_column(
+        self,
+        common_table_schema: TableSchema,
+    ):
+        """Create a SQL query to get the ratio of common values for each column"""
+        pass
+
+    ###### METHODS ######
+    def get_schemas(self) -> Tuple[TableSchema, TableSchema]:
+        if self.use_sql_query1:
+            schema_table_1 = self.client.get_table_schema_from_sql(self.query1)
+        else:
+            schema_table_1 = self.client.get_table_schema_from_table(self.table1)
+
+        if self.use_sql_query2:
+            schema_table_2 = self.client.get_table_schema_from_sql(self.query2)
+        else:
+            schema_table_2 = self.client.get_table_schema_from_table(self.table2)
+
+        return schema_table_1, schema_table_2
+
+    def get_table_columns(self) -> Tuple[List[str], List[str]]:
+        """Get the columns of two tables"""
+        schema_table_1, schema_table_2 = self.get_schemas()
+        return schema_table_1.columns_names, schema_table_2.columns_names
+
+    def get_schemas_with_warning(self) -> Tuple[TableSchema, TableSchema]:
+        """Get the schemas of two tables"""
+        schema_table_1, schema_table_2 = self.get_schemas()
+
+        if (
+            schema_table_1.get_unsupported_fields()
+            or schema_table_2.get_unsupported_fields()
+        ):
+            import streamlit as st
+
+            st.warning(
+                f"Unsupported RECORD fields: table 1: {schema_table_1.get_unsupported_fields()} / table 2: {schema_table_2.get_unsupported_fields()}, cannot be selected"
+            )
+        return schema_table_1, schema_table_2
+
+    def get_diff_columns(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Returns a mapping of columns that are different per table"""
+        schema_table_1, schema_table_2 = self.get_schemas()
+
+        common_columns_names = schema_table_1.get_common_column_names(
+            schema_table_2, include_unsupported=True
         )
-
-        select
-            total_rows
-            , missing_primary_key_in_table1
-            , missing_primary_key_in_table2
-            , safe_divide(missing_primary_key_in_table2 + missing_primary_key_in_table1, total_rows) as missing_primary_keys_ratio
-        from agg_diff_keys
-    """
-    print(query)
-    return query
-
-
-def get_query_exclusive_primary_keys(table1: str, table2: str, primary_key: str, exclusive_to: str) -> str:
-    query = None
-    if exclusive_to == "table1":
-        query = f"""
-        select
-            table1.*
-        from `{table1}` as table1
-        left join `{table2}` as table2 using ({primary_key})
-        where table2.{primary_key} is null
-        """
-
-    else:
-        query = f"""
-        select
-            table2.*
-        from `{table2}` as table2
-        left join `{table1}` as table1 using ({primary_key})
-        where table1.{primary_key} is null
-        """
-    print(query)
-    return query
-
-
-def get_query_plain_diff_tables(
-    table1: str,
-    table2: str,
-    common_table_schema: TableSchema,
-    primary_key: str,
-    sampling_rate: int = 100,
-) -> str:
-    """Create a SQL query to get the rows where the columns values are different"""
-    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
-        prefix="", column_name_suffix="__1"
-    )
-    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(
-        prefix="", column_name_suffix="__2"
-    )
-    query = f"""
-    with
-    inner_merged as (
-        select
-            table_1.{primary_key}
-            , {', '.join(
-                [
-                    (
-                        f"table_1.{col} as {col}__1"
-                        f", table_2.{col} as {col}__2"
-                    )
-                    for col in common_table_schema.columns_names
-                ]
-            )}
-        from `{table1}` as table_1{ f" tablesample system ({sampling_rate} percent)" if sampling_rate < 100 else "" }
-        inner join `{table2}` as table_2
-            using ({primary_key})
-    )
-    select *
-    from inner_merged
-    where {' or '.join([f'coalesce({cast_fields_1[index]}, "none") <> coalesce({cast_fields_2[index]}, "none")' for index in range(len(common_table_schema.columns_names))])}
-    """
-    print(query)
-    return query
-
-
-def query_ratio_common_values_per_column(
-    table1: str,
-    table2: str,
-    common_table_schema: TableSchema,
-    primary_key: str,
-    sampling_rate: int = 100,
-):
-    """Create a SQL query to get the ratio of common values for each column"""
-
-    cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
-        prefix="table_1."
-    )
-    cast_fields_2 = common_table_schema.get_query_cast_schema_as_string(
-        prefix="table_2."
-    )
-
-    query = f"""
-    with
-    count_diff as (
-        select
-            count({primary_key}) as count_common
-            , {', '.join(
-                [
-                    (
-                        f"countif(coalesce({cast_fields_1[index]}, {cast_fields_2[index]}) is not null) AS {common_table_schema.columns_names[index]}_count_not_null"
-                        f", countif(coalesce({cast_fields_1[index]}, 'none') = coalesce({cast_fields_2[index]}, 'non')) AS {common_table_schema.columns_names[index]}"
-                    )
-                    for index in range(len(cast_fields_1))
-                ]
-            )}
-        from `{table1}` as table_1{ f" tablesample system ({sampling_rate} percent)" if sampling_rate < 100 else "" }
-        inner join `{table2}` as table_2
-            using ({primary_key})
-    )
-    select {
-        ', '.join(
-            [
-                (
-                    f"struct("
-                        f"safe_divide({col}_count_not_null, count_common) as ratio_not_null"
-                        f", safe_divide({col}, {col}_count_not_null) as ratio_not_equal"
-                    f") AS {col}"
-                )
-                for col in common_table_schema.columns_names
-            ]
+        diff_columns_table_1 = [
+            column
+            for column in schema_table_1.columns
+            if column.name not in common_columns_names
+            or column.field_type != schema_table_2.get_column(column.name).field_type
+        ]
+        diff_columns_table_2 = [
+            column
+            for column in schema_table_2.columns
+            if column.name not in common_columns_names
+            or column.field_type != schema_table_1.get_column(column.name).field_type
+        ]
+        diff_1_table_schema = TableSchema(
+            table_name="diff_1_table", columns=diff_columns_table_1
         )
-    }
-    from count_diff
-    """
-    print(query)
-    return query
+        diff_2_table_schema = TableSchema(
+            table_name="diff_2_table", columns=diff_columns_table_2
+        )
+        return diff_1_table_schema.to_dataframe(), diff_2_table_schema.to_dataframe()
+
+    def get_common_schema_from_tables(self) -> TableSchema:
+        """Get the common schema of two tables"""
+        schema_table_1, schema_table_2 = self.get_schemas_with_warning()
+        common_columns = schema_table_1.get_common_column_names(
+            schema_table_2, include_unsupported=False
+        )
+        common_columns = [
+            schema_table_1.get_column(column) for column in common_columns
+        ]
+        return TableSchema(table_name="common_schema", columns=common_columns)
+
+    def get_dataframes(
+        self, table1: str, table2: str, columns: list[str]
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Get the dataframes of two tables"""
+        jobs = [
+            (self.client.query_table, {"table": table1, "columns": columns}),
+            (self.client.query_table, {"table": table2, "columns": columns}),
+        ]
+        df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
+        return df1, df2
+
+    def parse_strucutred_data(
+        self, data: pd.DataFrame, keys: List[str], column: str = "values"
+    ) -> pd.DataFrame:
+        """Parse the structured data"""
+        data = data.copy()
+        for key in keys:
+            data[key] = data[column].apply(lambda x: x[key])
+        data.drop(columns=[column], inplace=True)
+        return data
+
+    def get_column_diff_ratios(
+        self,
+        selected_columns: List[str],
+        common_table_schema: TableSchema,
+    ) -> pd.DataFrame:
+        """Get the ratio of common values for each column"""
+        filtered_columns = TableSchema(
+            table_name="filtered_columns",
+            columns=[
+                common_table_schema.get_column(column) for column in selected_columns
+            ],
+        )
+        query = self.query_ratio_common_values_per_column(
+            common_table_schema=filtered_columns
+        )
+        df = self.client.run_query_to_dataframe(query)
+        df = df.transpose().reset_index()
+        df.columns = ["column", "values"]
+
+        df = self.parse_strucutred_data(df, keys=["ratio_not_null", "ratio_equal"])
+        df["percentage_diff_values"] = 1 - df["ratio_equal"]
+        df.sort_values(
+            by=["percentage_diff_values", "ratio_not_null"],
+            ascending=False,
+            inplace=True,
+        )
+        return df
+
+    def get_plain_diff(
+        self,
+        selected_columns: List[str],
+        common_table_schema: TableSchema,
+    ) -> pd.DataFrame:
+        """Get the rows where the columns values are different"""
+        filtered_columns = TableSchema(
+            table_name="filtered_columns",
+            columns=[
+                common_table_schema.get_column(column) for column in selected_columns
+            ],
+        )
+        query = self.get_query_plain_diff_tables(
+            common_table_schema=filtered_columns,
+        )
+        df = self.client.run_query_to_dataframe(query)
+        return df
+
+    def run_query_compare_primary_keys(self) -> pd.DataFrame:
+        """Compare the primary keys of two tables"""
+        query = self.get_query_insight_tables_primary_keys()
+        df = self.client.run_query_to_dataframe(query)
+        return df
+
+    def run_query_exclusive_primary_keys(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Get the rows where the primary keys are exclusive to one table"""
+        df_exclusive_table1 = self.client.run_query_to_dataframe(
+            self.get_query_exclusive_primary_keys(exclusive_to="table1")
+        )
+        df_exclusive_table1.set_index(self.primary_key, inplace=True)
+
+        df_exclusive_table2 = self.client.run_query_to_dataframe(
+            self.get_query_exclusive_primary_keys(exclusive_to="table2")
+        )
+        df_exclusive_table2.set_index(self.primary_key, inplace=True)
+        return df_exclusive_table1, df_exclusive_table2

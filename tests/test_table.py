@@ -1,4 +1,4 @@
-from data_check.models.table import TableSchema, ColumnSchema
+from data_check.models.table import ColumnSchema, TableSchema
 
 
 def test_TableSchema_get_common_columns():
