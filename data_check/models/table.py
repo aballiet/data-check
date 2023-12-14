@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple
+from typing import List
 
 import pandas as pd
 from google.cloud import bigquery

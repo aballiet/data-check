@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
 from processors.bigquery import BigQueryProcessor
-from streamlit_tags import st_tags
 
 
 class DataDiff:
