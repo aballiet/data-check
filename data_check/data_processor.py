@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 import pandas as pd
+from sqlglot import parse_one
+from sqlglot.expressions import Select
 from models.table import TableSchema
 from query_client import QueryClient
 from tools import run_multithreaded
@@ -12,9 +14,11 @@ class DataProcessor(ABC):
         self,
         query1: str,
         query2: str,
+        dialect: str,
         client: QueryClient,
     ) -> None:
         self.client = client
+        self.dialect = dialect
 
         self.use_sql_query1 = False
         self.use_sql_query2 = False
@@ -25,7 +29,7 @@ class DataProcessor(ABC):
             self._table1 = None
         else:
             self._table1 = query1.strip().strip("\r\n")
-            self.query1 = self.get_sql_from_tablename(self._table1)
+            self.query1 = self.get_sql_exp_from_tablename(self._table1)
 
         if self.check_input_is_sql(query2):
             self.use_sql_query2 = True
@@ -33,7 +37,7 @@ class DataProcessor(ABC):
             self._table2 = None
         else:
             self._table2 = query2.strip().strip("\r\n")
-            self.query2 = self.get_sql_from_tablename(self._table2)
+            self.query2 = self.get_sql_exp_from_tablename(self._table2)
 
         # Needed for full diff
         self._primary_key = None
@@ -88,7 +92,7 @@ class DataProcessor(ABC):
         pass
 
     @abstractmethod
-    def get_sql_from_tablename(self, tablename: str) -> str:
+    def get_sql_exp_from_tablename(self, tablename: str) -> str:
         """Get the SQL query from a table name"""
         pass
 

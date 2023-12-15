@@ -1,11 +1,14 @@
 from data_processor import DataProcessor
 from models.table import TableSchema
 from query.query_bq import QueryBigQuery
+from sqlglot import select, func, alias, condition, column, parse_one
+from sqlglot.expressions import Select
+from processors.utils import add_suffix_to_column_names
 
 
 class BigQueryProcessor(DataProcessor):
     def __init__(self, query1: str, query2: str) -> None:
-        super().__init__(query1, query2, QueryBigQuery())
+        super().__init__(query1, query2, dialect="bigquery", client=QueryBigQuery())
 
     @property
     def with_statement(self) -> str:
@@ -20,37 +23,43 @@ class BigQueryProcessor(DataProcessor):
             {self.query2}
         )"""
 
+    @property
+    def with_statement_query(self) -> Select:
+        return select(
+        ).with_(
+            "table1", as_=parse_one(self.query1, dialect="bigquery")
+        ).with_(
+            "table2", as_=parse_one(self.query2, dialect="bigquery"))
+
     def check_input_is_sql(self, value: str) -> bool:
         """Check if the input is a SQL query"""
         return " select " in (" " + value).lower() and "from " in value.lower()
 
-    def get_sql_from_tablename(self, tablename: str) -> str:
-        return f"select * from `{tablename}`"
+    def get_sql_exp_from_tablename(self, tablename: str) -> Select:
+        return select("*").from_(tablename).sql(dialect=self.dialect)
 
     # Create a query to compare two tables common and exlusive primary keys for two tables
     def get_query_insight_tables_primary_keys(self) -> str:
         """Compare the primary keys of two tables"""
-        query = f"""
-            {self.with_statement},
 
-            agg_diff_keys as (
-                select
-                    count(*) as total_rows
-                    , countif(table1.{self.primary_key} is null) as missing_primary_key_in_table1
-                    , countif(table2.{self.primary_key} is null) as missing_primary_key_in_table2
-                from table1
-                full outer join table2
-                using ({self.primary_key})
-            )
+        agg_diff_keys = select(
+            alias(func("count", "*"), "total_rows"),
+            alias(func("countif", condition("table1.user_id is null")), "missing_primary_key_in_table1"),
+            alias(func("countif", condition("table2.user_id is null")), "missing_primary_key_in_table2")
+            ).from_("table1"
+            ).join("table2", join_type="full outer", using="user_id"
+        )
 
-            select
-                total_rows
-                , missing_primary_key_in_table1
-                , missing_primary_key_in_table2
-                , safe_divide(missing_primary_key_in_table2 + missing_primary_key_in_table1, total_rows) as missing_primary_keys_ratio
-            from agg_diff_keys
-        """
-        return query
+        query = self.with_statement_query.with_("agg_diff_keys", as_=agg_diff_keys).select(
+            "total_rows",
+            "missing_primary_key_in_table1",
+            "missing_primary_key_in_table2",
+            alias (
+                func("safe_divide", "missing_primary_key_in_table2 + missing_primary_key_in_table1", "total_rows"),
+                "missing_primary_keys_ratio")
+            ).from_("agg_diff_keys")
+
+        return query.sql(dialect=self.dialect)
 
     def get_query_exclusive_primary_keys(
         self, exclusive_to: str, limit: int = 500
@@ -58,44 +67,26 @@ class BigQueryProcessor(DataProcessor):
         common_table_schema = self.get_common_schema_from_tables()
 
         if exclusive_to == "table1":
-            query = f"""
-            {self.with_statement}
+            table1_columns_renamed = add_suffix_to_column_names(table_name="table1", column_names=common_table_schema.columns_names, suffix="__1")
 
-            select
-                table1.{self.primary_key}
-                , {', '.join(
-                    [
-                        (
-                            f"table1.{col} as {col}__1"
-                        )
-                        for col in common_table_schema.columns_names
-                    ]
-                )}
-            from table1
-            left join table2 using ({self.primary_key})
-            where table2.{self.primary_key} is null
-            limit {limit}
-            """
+            return self.with_statement_query.select(
+                column(self.primary_key, table="table1"),
+                table1_columns_renamed
+            ).from_("table1"
+            ).join("table2", join_type="left", using=self.primary_key
+            ).where(f"table2.{self.primary_key} is null"
+            ).limit(limit).sql(dialect=self.dialect)
 
-        else:
-            query = f"""
-            {self.with_statement}
-            select
-                table2.{self.primary_key}
-                , {', '.join(
-                    [
-                        (
-                            f"table2.{col} as {col}__2"
-                        )
-                        for col in common_table_schema.columns_names
-                    ]
-                )}
-            from table2
-            left join table1 using ({self.primary_key})
-            where table1.{self.primary_key} is null
-            limit {limit}
-            """
-        return query
+        if exclusive_to == "table2":
+            table1_columns_renamed = add_suffix_to_column_names(table_name="table2", column_names=common_table_schema.columns_names, suffix="__2")
+
+            return self.with_statement_query.select(
+                column(self.primary_key, table="table2"),
+                table1_columns_renamed
+            ).from_("table2"
+            ).join("table1", join_type="left", using=self.primary_key
+            ).where(f"table1.{self.primary_key} is null"
+            ).limit(limit).sql(dialect=self.dialect)
 
     def get_query_plain_diff_tables(
         self,
