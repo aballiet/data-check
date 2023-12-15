@@ -11,17 +11,10 @@ class BigQueryProcessor(DataProcessor):
         super().__init__(query1, query2, dialect="bigquery", client=QueryBigQuery())
 
     @property
-    def with_statement(self) -> str:
-        return f"""
-        with
-
-        table1 as (
-            {self.query1.sql(dialect=self.dialect)}
-        ),
-
-        table2 as (
-            {self.query2.sql(dialect=self.dialect)}
-        )"""
+    def with_statement_query(self) -> Select:
+        return (
+            select().with_("table1", as_=self.query1).with_("table2", as_=self.query2)
+        )
 
     @property
     def with_statement_query_sampled(self) -> Select:
@@ -48,12 +41,6 @@ class BigQueryProcessor(DataProcessor):
                 )
             )
         return self.with_statement_query
-
-    @property
-    def with_statement_query(self) -> Select:
-        return (
-            select().with_("table1", as_=self.query1).with_("table2", as_=self.query2)
-        )
 
     def check_input_is_sql(self, value: str) -> bool:
         """Check if the input is a SQL query"""

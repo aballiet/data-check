@@ -1,7 +1,7 @@
 from typing import List
 
-from sqlglot import alias, column, condition, func, select
-from sqlglot.expressions import Alias, Select
+from sqlglot import alias, column
+from sqlglot.expressions import Alias
 
 
 def add_suffix_to_column_names(

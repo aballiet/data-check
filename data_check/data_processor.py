@@ -6,7 +6,6 @@ from models.table import TableSchema
 from query_client import QueryClient
 from sqlglot import parse_one
 from sqlglot.expressions import Select
-from tools import run_multithreaded
 
 
 class DataProcessor(ABC):
