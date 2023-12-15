@@ -20,10 +20,6 @@ class DataDiff:
         self.init_from_query_params()
 
     @staticmethod
-    def display_results(results: list) -> None:
-        st.table(results)
-
-    @staticmethod
     @st.cache_data(show_spinner=False)
     def split_frame(input_df, rows) -> pd.DataFrame:
         df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
@@ -255,7 +251,7 @@ class DataDiff:
             )
             df_with_selections = style_gradient(
                 df_with_selections,
-                columns=["ratio_not_null"],
+                columns=["ratio_equal"],
                 gradient_color="white,blue",
             )
 
@@ -280,6 +276,11 @@ class DataDiff:
                     selected_columns=columns_to_display,
                     common_table_schema=st.session_state.common_table_schema,
                 )
+
+                if dataset.empty:
+                    st.write("No difference found ✅")
+                    st.dataframe(dataset)
+                    return
 
                 top_menu = st.columns(3)
                 with top_menu[0]:
@@ -325,7 +326,10 @@ class DataDiff:
                     use_container_width=True,
                 )
                 st.title("Diff SQL query")
-                st.code(query, language="sql")
+                st.code(
+                    query.sql(pretty=True, dialect=processor.dialect), language="sql"
+                )
+
 
 if __name__ == "__main__":
     dd = DataDiff()

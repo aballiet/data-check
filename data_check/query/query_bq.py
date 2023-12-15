@@ -6,7 +6,7 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from models.table import TableSchema
 from query_client import QueryClient
-from sqlglot import parse_one
+from sqlglot.expressions import Select
 
 USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 
@@ -14,6 +14,7 @@ USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 class QueryBigQuery(QueryClient):
     def __init__(self):
         self.client = self.init_client()
+        self.dialect = "bigquery"
 
     @st.cache_resource
     def get_credentials(_self):
@@ -35,21 +36,15 @@ class QueryBigQuery(QueryClient):
         return self.client.get_table(table)
 
     @st.cache_data(ttl=30)
-    def run_query_to_dataframe(_self, query: str) -> pd.DataFrame:
+    def _run_query_to_dataframe(_self, query: str) -> pd.DataFrame:
         return _self.run_query_job(query).to_dataframe()
+
+    def run_query_to_dataframe(self, query: Select) -> pd.DataFrame:
+        return self._run_query_to_dataframe(query.sql(dialect=self.dialect))
 
     def run_query_job(_self, query: str) -> bigquery.QueryJob:
         query_job = _self.client.query(query)
         return query_job.result()
-
-    def query_table(_self, table: str, columns: list[str]) -> pd.DataFrame:
-        columns = ", ".join(columns)
-        query = f"""
-            SELECT
-                {columns}
-            FROM `{table}`
-        """
-        return _self.run_query_to_dataframe(query=query)
 
     @st.cache_data(ttl=30)
     def get_table_schema_from_table(_self, table: str) -> TableSchema:
@@ -58,10 +53,14 @@ class QueryBigQuery(QueryClient):
         return TableSchema.from_bq_table(table=table_bq)
 
     @st.cache_data(ttl=30)
-    def get_table_schema_from_sql(_self, query: str) -> TableSchema:
+    def _get_table_schema_from_sql(_self, query: str) -> TableSchema:
         """Get the schema of a table from a query"""
-        query_with_limit = (
-            parse_one(query, dialect="bigquery").limit(50).sql(dialect="bigquery")
-        )
-        query_job = _self.run_query_job(query_with_limit)
+        query_job = _self.run_query_job(query)
         return TableSchema.from_bq_query_job(query_job)
+
+    def get_table_schema_from_sql(self, query: Select) -> TableSchema:
+        """Get the schema of a table from a query"""
+        query_with_limit = query.limit(50)
+        return self._get_table_schema_from_sql(
+            query_with_limit.sql(dialect=self.dialect)
+        )

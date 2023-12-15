@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 from models.table import TableSchema
+from sqlglot.expressions import Select
 
 
 class QueryClient(ABC):
@@ -19,11 +20,7 @@ class QueryClient(ABC):
         pass
 
     @abstractmethod
-    def run_query_to_dataframe(self, query: str) -> pd.DataFrame:
-        pass
-
-    @abstractmethod
-    def query_table(self, table: str, columns: list[str]) -> pd.DataFrame:
+    def run_query_to_dataframe(self, query: Select) -> pd.DataFrame:
         pass
 
     @abstractmethod
@@ -32,6 +29,6 @@ class QueryClient(ABC):
         pass
 
     @abstractmethod
-    def get_table_schema_from_sql(self, query: str) -> TableSchema:
+    def get_table_schema_from_sql(self, query: Select) -> TableSchema:
         """Get the schema of a table from a query"""
         pass
