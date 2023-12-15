@@ -10,6 +10,7 @@ from sqlglot.expressions import Select
 
 USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 
+
 class QueryBigQuery(QueryClient):
     def __init__(self):
         self.client = self.init_client()
@@ -60,4 +61,6 @@ class QueryBigQuery(QueryClient):
     def get_table_schema_from_sql(self, query: Select) -> TableSchema:
         """Get the schema of a table from a query"""
         query_with_limit = query.limit(50)
-        return self._get_table_schema_from_sql(query_with_limit.sql(dialect=self.dialect))
+        return self._get_table_schema_from_sql(
+            query_with_limit.sql(dialect=self.dialect)
+        )

@@ -326,7 +326,10 @@ class DataDiff:
                     use_container_width=True,
                 )
                 st.title("Diff SQL query")
-                st.code(query.sql(pretty=True, dialect=processor.dialect), language="sql")
+                st.code(
+                    query.sql(pretty=True, dialect=processor.dialect), language="sql"
+                )
+
 
 if __name__ == "__main__":
     dd = DataDiff()
