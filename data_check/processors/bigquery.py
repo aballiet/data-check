@@ -16,30 +16,31 @@ class BigQueryProcessor(DataProcessor):
         with
 
         table1 as (
-            {self.query1}
+            {self.query1.sql(dialect=self.dialect)}
         ),
 
         table2 as (
-            {self.query2}
+            {self.query2.sql(dialect=self.dialect)}
         )"""
 
     @property
     def with_statement_query(self) -> Select:
         return select(
         ).with_(
-            "table1", as_=parse_one(self.query1, dialect="bigquery")
+            "table1", as_=self.query1
         ).with_(
-            "table2", as_=parse_one(self.query2, dialect="bigquery"))
+            "table2", as_=self.query2
+        )
 
     def check_input_is_sql(self, value: str) -> bool:
         """Check if the input is a SQL query"""
         return " select " in (" " + value).lower() and "from " in value.lower()
 
     def get_sql_exp_from_tablename(self, tablename: str) -> Select:
-        return select("*").from_(tablename).sql(dialect=self.dialect)
+        return select("*").from_(tablename, dialect=self.dialect)
 
     # Create a query to compare two tables common and exlusive primary keys for two tables
-    def get_query_insight_tables_primary_keys(self) -> str:
+    def get_query_insight_tables_primary_keys(self) -> Select:
         """Compare the primary keys of two tables"""
 
         agg_diff_keys = select(
@@ -59,11 +60,11 @@ class BigQueryProcessor(DataProcessor):
                 "missing_primary_keys_ratio")
             ).from_("agg_diff_keys")
 
-        return query.sql(dialect=self.dialect)
+        return query
 
     def get_query_exclusive_primary_keys(
         self, exclusive_to: str, limit: int = 500
-    ) -> str:
+    ) -> Select:
         common_table_schema = self.get_common_schema_from_tables()
 
         if exclusive_to == "table1":
@@ -71,27 +72,27 @@ class BigQueryProcessor(DataProcessor):
 
             return self.with_statement_query.select(
                 column(self.primary_key, table="table1"),
-                table1_columns_renamed
+                *table1_columns_renamed
             ).from_("table1"
             ).join("table2", join_type="left", using=self.primary_key
             ).where(f"table2.{self.primary_key} is null"
-            ).limit(limit).sql(dialect=self.dialect)
+            ).limit(limit)
 
         if exclusive_to == "table2":
             table1_columns_renamed = add_suffix_to_column_names(table_name="table2", column_names=common_table_schema.columns_names, suffix="__2")
 
             return self.with_statement_query.select(
                 column(self.primary_key, table="table2"),
-                table1_columns_renamed
+                *table1_columns_renamed
             ).from_("table2"
             ).join("table1", join_type="left", using=self.primary_key
             ).where(f"table1.{self.primary_key} is null"
-            ).limit(limit).sql(dialect=self.dialect)
+            ).limit(limit)
 
     def get_query_plain_diff_tables(
         self,
         common_table_schema: TableSchema,
-    ) -> str:
+    ) -> Select:
         """Create a SQL query to get the rows where the columns values are different"""
         cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
             prefix="", column_name_suffix="__1"
@@ -122,9 +123,9 @@ class BigQueryProcessor(DataProcessor):
         from inner_merged
         where {' or '.join([f'coalesce({cast_fields_1[index]}, "none") <> coalesce({cast_fields_2[index]}, "none")' for index in range(len(common_table_schema.columns_names))])}
         """
-        return query
+        return parse_one(query, dialect=self.dialect)
 
-    def query_ratio_common_values_per_column(self, common_table_schema: TableSchema):
+    def query_ratio_common_values_per_column(self, common_table_schema: TableSchema) -> Select:
         """Create a SQL query to get the ratio of common values for each column"""
 
         cast_fields_1 = common_table_schema.get_query_cast_schema_as_string(
@@ -168,4 +169,4 @@ class BigQueryProcessor(DataProcessor):
         }
         from count_diff
         """
-        return query
+        return parse_one(query, dialect=self.dialect)

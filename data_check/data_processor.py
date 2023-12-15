@@ -25,7 +25,7 @@ class DataProcessor(ABC):
 
         if self.check_input_is_sql(query1):
             self.use_sql_query1 = True
-            self.query1 = query1.strip().strip("\r\n")
+            self.query1 = parse_one(query1.strip().strip("\r\n"), dialect=self.dialect)
             self._table1 = None
         else:
             self._table1 = query1.strip().strip("\r\n")
@@ -33,7 +33,7 @@ class DataProcessor(ABC):
 
         if self.check_input_is_sql(query2):
             self.use_sql_query2 = True
-            self.query2 = query2.strip().strip("\r\n")
+            self.query2 = parse_one(query2.strip().strip("\r\n"), dialect=self.dialect)
             self._table2 = None
         else:
             self._table2 = query2.strip().strip("\r\n")
@@ -92,24 +92,24 @@ class DataProcessor(ABC):
         pass
 
     @abstractmethod
-    def get_sql_exp_from_tablename(self, tablename: str) -> str:
+    def get_sql_exp_from_tablename(self, tablename: str) -> Select:
         """Get the SQL query from a table name"""
         pass
 
     @abstractmethod
-    def get_query_insight_tables_primary_keys(self) -> str:
+    def get_query_insight_tables_primary_keys(self) -> Select:
         """Compare the primary keys of two tables"""
         pass
 
     @abstractmethod
-    def get_query_exclusive_primary_keys(self, exclusive_to: str) -> str:
+    def get_query_exclusive_primary_keys(self, exclusive_to: str) -> Select:
         pass
 
     @abstractmethod
     def get_query_plain_diff_tables(
         self,
         common_table_schema: TableSchema,
-    ) -> str:
+    ) -> Select:
         """Create a SQL query to get the rows where the columns values are different"""
         pass
 
@@ -117,7 +117,7 @@ class DataProcessor(ABC):
     def query_ratio_common_values_per_column(
         self,
         common_table_schema: TableSchema,
-    ):
+    ) -> Select:
         """Create a SQL query to get the ratio of common values for each column"""
         pass
 
@@ -193,17 +193,6 @@ class DataProcessor(ABC):
         ]
         return TableSchema(table_name="common_schema", columns=common_columns)
 
-    def get_dataframes(
-        self, table1: str, table2: str, columns: list[str]
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Get the dataframes of two tables"""
-        jobs = [
-            (self.client.query_table, {"table": table1, "columns": columns}),
-            (self.client.query_table, {"table": table2, "columns": columns}),
-        ]
-        df1, df2 = run_multithreaded(jobs=jobs, max_workers=2)
-        return df1, df2
-
     def parse_strucutred_data(
         self, data: pd.DataFrame, keys: List[str], column: str = "values"
     ) -> pd.DataFrame:
@@ -246,7 +235,7 @@ class DataProcessor(ABC):
         self,
         selected_columns: List[str],
         common_table_schema: TableSchema,
-    ) -> Tuple[str, pd.DataFrame]:
+    ) -> Tuple[Select, pd.DataFrame]:
         """Get the rows where the columns values are different"""
         filtered_columns = TableSchema(
             table_name="filtered_columns",
