@@ -57,16 +57,16 @@ class BigQueryProcessor(DataProcessor):
             select(
                 alias(func("count", "*"), "total_rows"),
                 alias(
-                    func("countif", condition("table1.user_id is null")),
+                    func("countif", condition(f"table1.{self.primary_key} is null")),
                     "missing_primary_key_in_table1",
                 ),
                 alias(
-                    func("countif", condition("table2.user_id is null")),
+                    func("countif", condition(f"table2.{self.primary_key} is null")),
                     "missing_primary_key_in_table2",
                 ),
             )
             .from_("table1")
-            .join("table2", join_type="full outer", using="user_id")
+            .join("table2", join_type="full outer", using=self.primary_key)
         )
 
         query = (
