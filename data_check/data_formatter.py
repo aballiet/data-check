@@ -30,8 +30,8 @@ def highlight_diff(x, columns: List[str]):
     df1 = pd.DataFrame("", index=x.index, columns=x.columns)
 
     for column in columns:
-        df1.loc[(x[column + "__1"] != x[column + "__2"]), column + "__1"] = c1
-        df1.loc[(x[column + "__1"] != x[column + "__2"]), column + "__2"] = c1
+        df1.loc[(x[column + "__1"].astype(str) != x[column + "__2"].astype(str)), column + "__1"] = c1
+        df1.loc[(x[column + "__1"].astype(str) != x[column + "__2"].astype(str)), column + "__2"] = c1
 
     return df1
 
