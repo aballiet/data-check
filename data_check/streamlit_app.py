@@ -29,7 +29,7 @@ class DataDiff:
         self, key: str, default_value: str, cast_as: str = None
     ) -> str:
         if key not in st.session_state:
-            value_to_set = st.experimental_get_query_params().get(key, [default_value])[
+            value_to_set = st.query_params.get(key, [default_value])[
                 0
             ]
             if cast_as == "int":
@@ -43,8 +43,8 @@ class DataDiff:
 
     def init_from_query_params(self):
         st.session_state.config_tables = (
-            st.experimental_get_query_params().get("table1", [None])[0]
-        ) and st.experimental_get_query_params().get("table2", [None])[0]
+            st.query_params.get("table1", [None])[0]
+        ) and st.query_params.get("table2", [None])[0]
 
         self.set_session_state_from_query_params(
             "table1",
@@ -67,19 +67,17 @@ class DataDiff:
         self.set_session_state_from_query_params("is_select_all", "False")
 
         st.session_state.loaded_tables = (
-            st.experimental_get_query_params().get("columns_to_compare", [None])[0]
-            or st.experimental_get_query_params().get("is_select_all", [None])[0]
+            st.query_params.get("columns_to_compare", [None])[0]
+            or st.query_params.get("is_select_all", [None])[0]
         )
 
     def update_first_step(self):
         st.session_state.table1 = st.session_state.temp_table_1
         st.session_state.table2 = st.session_state.temp_table_2
 
-        st.experimental_set_query_params(
-            sampling_rate=st.session_state.sampling_rate,
-            table1=st.session_state.table1,
-            table2=st.session_state.table2,
-        )
+        st.query_params["sampling_rate"] = st.session_state.sampling_rate
+        st.query_params["table1"] = st.session_state.table1
+        st.query_params["table2"] = st.session_state.table2
 
         st.session_state.config_tables = True
         st.session_state.is_select_all = None
@@ -124,14 +122,12 @@ class DataDiff:
                 st.session_state.temp_columns_to_compare
             )
 
-        st.experimental_set_query_params(
-            sampling_rate=st.session_state.sampling_rate,
-            table1=st.session_state.table1,
-            table2=st.session_state.table2,
-            primary_key=st.session_state.primary_key,
-            columns_to_compare=",".join(st.session_state.columns_to_compare),
-            select_all=st.session_state.is_select_all,
-        )
+        st.query_params["sampling_rate"] = st.session_state.sampling_rate
+        st.query_params["primary_key"] = st.session_state.primary_key
+        st.query_params["columns_to_compare"] = ",".join(st.session_state.columns_to_compare)
+        st.query_params["select_all"] = st.session_state.is_select_all
+        st.query_params["table1"] = st.session_state.table1
+        st.query_params["table2"] = st.session_state.table2
 
         st.session_state.loaded_tables = True
 
