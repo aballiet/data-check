@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
-from data_formatter import highlight_diff_dataset, style_gradient, style_percentage
+from data_formatter import (highlight_diff_dataset, style_gradient,
+                            style_percentage)
 from processors.bigquery import BigQueryProcessor
 
 
@@ -29,9 +30,8 @@ class DataDiff:
         self, key: str, default_value: str, cast_as: str = None
     ) -> str:
         if key not in st.session_state:
-            value_to_set = st.query_params.get(key, [default_value])[
-                0
-            ]
+            value_to_set = st.query_params.get(key, default_value)
+            print(f"Setting {key} to {value_to_set}")
             if cast_as == "int":
                 st.session_state[key] = int(value_to_set)
             elif cast_as == "list":
@@ -43,8 +43,8 @@ class DataDiff:
 
     def init_from_query_params(self):
         st.session_state.config_tables = (
-            st.query_params.get("table1", [None])[0]
-        ) and st.query_params.get("table2", [None])[0]
+            st.query_params.get("table1", None)
+        ) and st.query_params.get("table2", None)
 
         self.set_session_state_from_query_params(
             "table1",
