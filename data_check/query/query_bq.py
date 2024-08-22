@@ -1,15 +1,19 @@
 from os import getenv
-
+from threading import Thread
 import pandas as pd
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
+from google.cloud.bigquery._helpers import TimeoutType
 from models.table import TableSchema
 from query_client import QueryClient
 from sqlglot.expressions import Select
+from google.cloud.bigquery.job import (
+    QueryJob,
+)
 
 USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
-
+TIMEOUT_BIGQUERY = 900 # 15 * 60 = 15 minutes
 
 class QueryBigQuery(QueryClient):
     def __init__(self):
@@ -34,11 +38,32 @@ class QueryBigQuery(QueryClient):
     def get_table(self, table: str) -> bigquery.Table:
         return self.client.get_table(table)
 
-    def _run_query_to_dataframe(_self, query: str) -> pd.DataFrame:
-        return _self.run_query_job(query).to_dataframe()
+    def run_query_job_with_timeout(self, query: str, timeout_seconds,):
+        # Container for the result
+        result = [None]
 
-    def run_query_to_dataframe(self, query: Select) -> pd.DataFrame:
-        return self._run_query_to_dataframe(query.sql(dialect=self.dialect))
+        query_job = self.client.query(query)
+
+        thread = Thread(target=self.get_query_job_result, args=(query_job, result))
+        thread.start()
+        thread.join(timeout=timeout_seconds)
+
+        if thread.is_alive():
+            self.client.cancel_job(job_id=query_job.job_id)
+            raise TimeoutError("BigQuery query took too long to execute, job cancelled.")
+
+        return result[0]
+
+    def _run_query_to_dataframe(_self, query: str, timeout_seconds: int = TIMEOUT_BIGQUERY) -> pd.DataFrame:
+        return _self.run_query_job_with_timeout(query, timeout_seconds=timeout_seconds).to_dataframe()
+
+    def run_query_to_dataframe(self, query: Select, timeout_seconds: int = TIMEOUT_BIGQUERY) -> pd.DataFrame:
+        return self._run_query_to_dataframe(query.sql(dialect=self.dialect), timeout_seconds=timeout_seconds)
+
+    @staticmethod
+    def get_query_job_result(query_job: QueryJob, result):
+        result[0] = query_job.result()
+        return result
 
     def run_query_job(_self, query: str) -> bigquery.QueryJob:
         query_job = _self.client.query(query)
