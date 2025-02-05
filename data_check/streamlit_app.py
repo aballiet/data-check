@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from data_check.data_formatter import (highlight_diff_dataset, style_gradient,
-                             style_percentage)
+                                       style_percentage)
 from data_check.processors.bigquery import BigQueryProcessor
 
 
