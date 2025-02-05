@@ -1,8 +1,9 @@
 import pandas as pd
 import streamlit as st
-from data_formatter import (highlight_diff_dataset, style_gradient,
-                            style_percentage)
-from processors.bigquery import BigQueryProcessor
+
+from data_check.data_formatter import (highlight_diff_dataset, style_gradient,
+                             style_percentage)
+from data_check.processors.bigquery import BigQueryProcessor
 
 
 class DataDiff:
@@ -152,7 +153,7 @@ class DataDiff:
         )
 
         st.selectbox(
-            "Select primary key:",
+            "Select primary key (must be unique for a given row):",
             common_table_schema.columns_names,
             key="temp_primary_key",
             index=primary_key_select_index,
@@ -172,7 +173,7 @@ class DataDiff:
         )
 
         st.slider(
-            "Data sampling (only avaible for direct tables as input)",
+            "Data sampling (only available for direct tables as input)",
             min_value=10,
             max_value=100,
             step=1,
@@ -204,6 +205,19 @@ class DataDiff:
         )
 
         if st.session_state.loaded_tables:
+
+            st.write("Checking primary keys are unique for a given row...")
+
+            primary_keys_unique_table1, error_message_table1 = processor.run_query_check_primary_keys_unique(table="table1")
+            primary_keys_unique_table2, error_message_table2 = processor.run_query_check_primary_keys_unique(table="table2")
+
+            if not primary_keys_unique_table1 or not primary_keys_unique_table2:
+                st.write("Primary keys are not unique for a given row ❌")
+                st.write(error_message_table1)
+                st.write(error_message_table2)
+                st.stop()
+        
+            st.write("Primary keys are unique for a given row ✅")
             # Using BigQueryClient to run queries, output primary keys in common and exclusive to each table on streamlit : display rows in table format
             st.write("Analyzing primary keys...")
             results_primary_keys = processor.run_query_compare_primary_keys()

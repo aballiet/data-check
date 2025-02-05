@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 import pandas as pd
-from models.table import TableSchema
-from query_client import QueryClient
 from sqlglot import parse_one
 from sqlglot.expressions import Select
+
+from .models.table import TableSchema
+from .query_client import QueryClient
 
 
 class DataProcessor(ABC):
@@ -98,6 +99,11 @@ class DataProcessor(ABC):
     @abstractmethod
     def get_query_insight_tables_primary_keys(self) -> Select:
         """Compare the primary keys of two tables"""
+        pass
+
+    @abstractmethod
+    def get_query_check_primary_keys_unique(self, table_name: str) -> Select:
+        """Check if the primary keys are unique for a given row"""
         pass
 
     @abstractmethod
@@ -247,6 +253,17 @@ class DataProcessor(ABC):
         )
         df = self.client.run_query_to_dataframe(query)
         return query, df
+    
+    def run_query_check_primary_keys_unique(self, table: str) -> Tuple[bool, str]:
+        """Check if the primary keys are unique for a given row"""
+        query = self.get_query_check_primary_keys_unique(table_name=table)
+        df = self.client.run_query_to_dataframe(query)
+
+        if not df.empty:
+            error_message = f"Primary key is not unique for {table}: . You can use the query: {query.sql()} to check it."
+            return False, error_message
+
+        return True, ""
 
     def run_query_compare_primary_keys(self) -> pd.DataFrame:
         """Compare the primary keys of two tables"""

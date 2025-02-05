@@ -1,6 +1,6 @@
 [project]
 name = "data_check"
-version = "0.1.0"
+version = "0.1.1"
 description = "Streamlit app to compare bigquery tables"
 readme = "README.md"
 requires-python = ">=3.9"

@@ -1,16 +1,15 @@
 from os import getenv
 from threading import Thread
+
 import pandas as pd
 import streamlit as st
 from google.cloud import bigquery
+from google.cloud.bigquery.job import QueryJob
 from google.oauth2 import service_account
-from google.cloud.bigquery._helpers import TimeoutType
-from models.table import TableSchema
-from query_client import QueryClient
 from sqlglot.expressions import Select
-from google.cloud.bigquery.job import (
-    QueryJob,
-)
+
+from data_check.models.table import TableSchema
+from data_check.query_client import QueryClient
 
 USE_STREAMLIT_SECRET = getenv("USE_STREAMLIT_SECRET", False)
 TIMEOUT_BIGQUERY = 900 # 15 * 60 = 15 minutes
