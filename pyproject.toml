@@ -1,2 +1,24 @@
-[tool.pytest.ini_options]
-pythonpath = "data_check"
+[project]
+name = "data_check"
+version = "0.1.0"
+description = "Streamlit app to compare bigquery tables"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "db-dtypes>=1.4.0",
+    "google-cloud-bigquery>=3.29.0",
+    "pandas>=2.2.3",
+    "pandas-gbq>=0.26.1",
+    "seaborn>=0.13.2",
+    "sqlglot>=26.4.1",
+    "streamlit==1.31.1",
+    "streamlit-tags>=1.2.8",
+    "tqdm>=4.67.1",
+]
+
+[dependency-groups]
+dev = [
+    "isort>=6.0.0",
+    "pytest>=8.3.4",
+    "ruff>=0.9.4",
+]

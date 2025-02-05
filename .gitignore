@@ -6,3 +6,8 @@
 # Standard Python ignore list
 *.py[cod]
 __pycache__/
+
+# Python package
+build/
+dist/
+data_check.egg-info/
