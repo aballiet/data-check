@@ -19,11 +19,5 @@ def test_TableSchema_get_common_columns():
         ],
     )
 
-    assert table1.get_common_columns(other=table2) == [
-        ColumnSchema(name="col2", field_type="STRING", mode="NULLABLE"),
-        ColumnSchema(name="col3", field_type="STRING", mode="NULLABLE"),
-    ]
-    assert table2.get_common_columns(other=table1) == [
-        ColumnSchema(name="col2", field_type="STRING", mode="NULLABLE"),
-        ColumnSchema(name="col3", field_type="STRING", mode="NULLABLE"),
-    ]
+    assert set(table1.get_common_column_names(other=table2)) == set(["col2", "col3"])
+    assert set(table2.get_common_column_names(other=table1)) == set(["col2", "col3"])

@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from models.table import TableSchema
 from sqlglot.expressions import Select
+
+from .models.table import TableSchema
 
 
 class QueryClient(ABC):

@@ -1,9 +1,11 @@
-from data_processor import DataProcessor
-from models.table import TableSchema
-from processors.utils import add_suffix_to_column_names
-from query.query_bq import QueryBigQuery
 from sqlglot import alias, column, condition, func, parse_one, select
 from sqlglot.expressions import Select
+
+from data_check.data_processor import DataProcessor
+from data_check.models.table import TableSchema
+from data_check.query.query_bq import QueryBigQuery
+
+from .utils import add_suffix_to_column_names
 
 
 class BigQueryProcessor(DataProcessor):
@@ -70,7 +72,7 @@ class BigQueryProcessor(DataProcessor):
         )
 
         query = (
-            self.with_statement_query.with_("agg_diff_keys", as_=agg_diff_keys)
+            self.with_statement_query_sampled.with_("agg_diff_keys", as_=agg_diff_keys)
             .select(
                 "total_rows",
                 "missing_primary_key_in_table1",
@@ -89,6 +91,16 @@ class BigQueryProcessor(DataProcessor):
 
         return query
 
+    def get_query_check_primary_keys_unique(self, table_name: str) -> Select:
+        """Check if the primary keys are unique for a given row"""
+        return (
+            self.with_statement_query_sampled.select(
+                alias(func("count", "*"), "total_rows"),
+            ).from_(table_name, dialect=self.dialect).group_by(self.primary_key).having(
+                func("count", "*") > 1
+            )
+        )
+
     def get_query_exclusive_primary_keys(
         self, exclusive_to: str, limit: int = 500
     ) -> Select:
@@ -102,7 +114,7 @@ class BigQueryProcessor(DataProcessor):
             )
 
             return (
-                self.with_statement_query.select(
+                self.with_statement_query_sampled.select(
                     column(self.primary_key, table="table1"), *table1_columns_renamed
                 )
                 .from_("table1")
@@ -119,7 +131,7 @@ class BigQueryProcessor(DataProcessor):
             )
 
             return (
-                self.with_statement_query.select(
+                self.with_statement_query_sampled.select(
                     column(self.primary_key, table="table2"), *table1_columns_renamed
                 )
                 .from_("table2")
