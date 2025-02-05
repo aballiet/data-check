@@ -3,13 +3,13 @@
     "configurations": [
         {
             "name": "debug streamlit",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
-            "python": "/Users/antoineballiet/Documents/GitHub/data-check/.venv/bin/python",
-            "program": "/Users/antoineballiet/Documents/GitHub/data-check/.venv/bin/streamlit",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/.venv/bin/streamlit",
             "args": [
                 "run",
-                "data_check/streamlit_app.py"
+                "${workspaceFolder}/data_check/streamlit_app.py"
             ]
         }
     ]
