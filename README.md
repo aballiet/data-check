@@ -10,6 +10,6 @@ For those who were using Data-Diff from Datafold, it's a similar tool 😉
 # Create python env (i.e. 3.11)
 
 pip install -r requirements.txt
-pip install .
+pip install -e .
 streamlit run data_check/streamlit_app.py
 ```

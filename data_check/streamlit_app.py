@@ -249,6 +249,11 @@ class DataDiff:
                 common_table_schema=st.session_state.common_table_schema,
             )
 
+            # Check if dataframe is empty meaning that the SQL queries entered are not returning rows
+            if bool(results_ratio_per_column["ratio_not_null"].isna().all()):
+                st.error("The SQL query did not return any rows. Please double check that the SQL queries entered are returning rows.")
+                st.stop()
+
             origin_columns = results_ratio_per_column.columns
 
             results_ratio_per_column.insert(0, "Select", False)
