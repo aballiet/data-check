@@ -11,7 +11,7 @@ dependencies = [
     "pandas-gbq>=0.26.1",
     "seaborn>=0.13.2",
     "sqlglot>=26.4.1",
-    "streamlit==1.31.1",
+    "streamlit==1.46.1",
     "streamlit-tags>=1.2.8",
     "tqdm>=4.67.1",
 ]
