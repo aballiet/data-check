@@ -1,3 +1,5 @@
+from typing import List, Union
+
 import pandas as pd
 import streamlit as st
 
@@ -11,7 +13,7 @@ class DataDiff:
         self.df1: pd.DataFrame = None
         self.df2: pd.DataFrame = None
 
-        self.primary_key: str = None
+        self.primary_key: Union[str, List[str]] = None
         self.columns_to_compare: str = None
 
         self.processor: BigQueryProcessor = None
@@ -60,7 +62,7 @@ class DataDiff:
         """,
         )
         self.set_session_state_from_query_params("sampling_rate", "100", cast_as="int")
-        self.set_session_state_from_query_params("primary_key", "user_id")
+        self.set_session_state_from_query_params("primary_key", "user_id", cast_as="list")
 
         self.set_session_state_from_query_params(
             "columns_to_compare", None, cast_as="list"
@@ -110,6 +112,12 @@ class DataDiff:
         st.form_submit_button(label="OK", on_click=self.update_first_step)
 
     def update_second_step(self):
+        # Validate primary key selection
+        temp_primary_key = st.session_state.get("temp_primary_key", [])
+        if not temp_primary_key or len(temp_primary_key) == 0:
+            st.error("Please select at least one primary key.")
+            return
+        
         st.session_state.is_select_all = st.session_state.temp_is_select_all
         st.session_state.primary_key = st.session_state.temp_primary_key
         st.session_state.sampling_rate = st.session_state.temp_sampling_rate
@@ -124,7 +132,11 @@ class DataDiff:
             )
 
         st.query_params["sampling_rate"] = st.session_state.sampling_rate
-        st.query_params["primary_key"] = st.session_state.primary_key
+        # Handle both single and multiple primary keys for query params
+        if isinstance(st.session_state.primary_key, list):
+            st.query_params["primary_key"] = ",".join(st.session_state.primary_key)
+        else:
+            st.query_params["primary_key"] = st.session_state.primary_key
         st.query_params["columns_to_compare"] = ",".join(st.session_state.columns_to_compare)
         st.query_params["select_all"] = st.session_state.is_select_all
         st.query_params["table1"] = st.session_state.table1
@@ -146,17 +158,20 @@ class DataDiff:
         st.write("Columns exclusive to table 2 :")
         st.dataframe(diff_columns2, width=1400)
 
-        primary_key_select_index = (
-            common_table_schema.columns_names.index(st.session_state.primary_key)
-            if st.session_state.primary_key in common_table_schema.columns_names
-            else None
-        )
+        # Handle both single string and list of strings for primary key
+        if st.session_state.primary_key is not None:
+            if isinstance(st.session_state.primary_key, str):
+                current_primary_keys = [st.session_state.primary_key] if st.session_state.primary_key in common_table_schema.columns_names else []
+            else:
+                current_primary_keys = [pk for pk in st.session_state.primary_key if pk in common_table_schema.columns_names]
+        else:
+            current_primary_keys = []
 
-        st.selectbox(
-            "Select primary key (must be unique for a given row):",
+        st.multiselect(
+            "Select primary key(s) (combination must be unique for a given row):",
             common_table_schema.columns_names,
             key="temp_primary_key",
-            index=primary_key_select_index,
+            default=current_primary_keys,
         )
 
         st.multiselect(

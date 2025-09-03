@@ -51,25 +51,50 @@ class BigQueryProcessor(DataProcessor):
     def get_sql_exp_from_tablename(self, tablename: str) -> Select:
         return select("*").from_(tablename, dialect=self.dialect)
 
+    def _get_primary_key_concat_expr(self, table_prefix: str) -> str:
+        """Get concatenated primary key expression for BigQuery"""
+        if len(self.primary_key) == 1:
+            return f"{table_prefix}.{self.primary_key[0]}"
+        else:
+            # For multiple primary keys, concatenate them as strings
+            pk_exprs = [f"coalesce(cast({table_prefix}.{pk} as string), '')" for pk in self.primary_key]
+            return f"concat({', '.join(pk_exprs)})"
+
+    def _get_primary_key_using_clause(self) -> str:
+        """Get USING clause for joins - only works for single primary key"""
+        if len(self.primary_key) == 1:
+            return self.primary_key[0]
+        else:
+            # For multiple keys, we can't use USING - need ON condition
+            return None
+
+    def _get_primary_key_join_condition(self) -> str:
+        """Get join condition for primary keys"""
+        if len(self.primary_key) == 1:
+            return f"table1.{self.primary_key[0]} = table2.{self.primary_key[0]}"
+        else:
+            # For multiple primary keys, create a composite key by concatenating
+            table1_concat = self._get_primary_key_concat_expr("table1")
+            table2_concat = self._get_primary_key_concat_expr("table2")
+            return f"{table1_concat} = {table2_concat}"
+
     # Create a query to compare two tables common and exlusive primary keys for two tables
     def get_query_insight_tables_primary_keys(self) -> Select:
         """Compare the primary keys of two tables"""
-
-        agg_diff_keys = (
-            select(
-                alias(func("count", "*"), "total_rows"),
-                alias(
-                    func("countif", condition(f"table1.{self.primary_key} is null")),
-                    "missing_primary_key_in_table1",
-                ),
-                alias(
-                    func("countif", condition(f"table2.{self.primary_key} is null")),
-                    "missing_primary_key_in_table2",
-                ),
-            )
-            .from_("table1")
-            .join("table2", join_type="full outer", using=self.primary_key)
-        )
+        
+        table1_pk_expr = self._get_primary_key_concat_expr("table1")
+        table2_pk_expr = self._get_primary_key_concat_expr("table2")
+        join_condition = self._get_primary_key_join_condition()
+        
+        # For BigQuery, use concatenated expressions to handle both single and multiple primary keys
+        agg_diff_keys = parse_one(f"""
+            select
+                count(*) as total_rows,
+                countif({table1_pk_expr} is null or {table1_pk_expr} = '') as missing_primary_key_in_table1,
+                countif({table2_pk_expr} is null or {table2_pk_expr} = '') as missing_primary_key_in_table2
+            from table1
+            full outer join table2 on {join_condition}
+        """, dialect=self.dialect)
 
         query = (
             self.with_statement_query_sampled.with_("agg_diff_keys", as_=agg_diff_keys)
@@ -93,10 +118,11 @@ class BigQueryProcessor(DataProcessor):
 
     def get_query_check_primary_keys_unique(self, table_name: str) -> Select:
         """Check if the primary keys are unique for a given row"""
+        # Group by all primary keys to check uniqueness
         return (
             self.with_statement_query_sampled.select(
                 alias(func("count", "*"), "total_rows"),
-            ).from_(table_name, dialect=self.dialect).group_by(self.primary_key).having(
+            ).from_(table_name, dialect=self.dialect).group_by(*self.primary_key).having(
                 func("count", "*") > 1
             )
         )
@@ -105,6 +131,7 @@ class BigQueryProcessor(DataProcessor):
         self, exclusive_to: str, limit: int = 500
     ) -> Select:
         common_table_schema = self.get_common_schema_from_tables()
+        join_condition = self._get_primary_key_join_condition()
 
         if exclusive_to == "table1":
             table1_columns_renamed = add_suffix_to_column_names(
@@ -112,33 +139,33 @@ class BigQueryProcessor(DataProcessor):
                 column_names=common_table_schema.columns_names,
                 suffix="__1",
             )
-
-            return (
-                self.with_statement_query_sampled.select(
-                    column(self.primary_key, table="table1"), *table1_columns_renamed
-                )
-                .from_("table1")
-                .join("table2", join_type="left", using=self.primary_key)
-                .where(f"table2.{self.primary_key} is null")
-                .limit(limit)
-            )
+            pk_select = ', '.join([f'table1.{pk}' for pk in self.primary_key])
+            table2_pk_expr = self._get_primary_key_concat_expr("table2")
+            
+            return parse_one(f"""
+                select {pk_select}, {', '.join([col.sql() for col in table1_columns_renamed])}
+                from table1
+                left join table2 on {join_condition}
+                where {table2_pk_expr} is null or {table2_pk_expr} = ''
+                limit {limit}
+            """, dialect=self.dialect)
 
         if exclusive_to == "table2":
-            table1_columns_renamed = add_suffix_to_column_names(
+            table2_columns_renamed = add_suffix_to_column_names(
                 table_name="table2",
                 column_names=common_table_schema.columns_names,
                 suffix="__2",
             )
-
-            return (
-                self.with_statement_query_sampled.select(
-                    column(self.primary_key, table="table2"), *table1_columns_renamed
-                )
-                .from_("table2")
-                .join("table1", join_type="left", using=self.primary_key)
-                .where(f"table1.{self.primary_key} is null")
-                .limit(limit)
-            )
+            pk_select = ', '.join([f'table2.{pk}' for pk in self.primary_key])
+            table1_pk_expr = self._get_primary_key_concat_expr("table1")
+            
+            return parse_one(f"""
+                select {pk_select}, {', '.join([col.sql() for col in table2_columns_renamed])}
+                from table2
+                left join table1 on {join_condition}
+                where {table1_pk_expr} is null or {table1_pk_expr} = ''
+                limit {limit}
+            """, dialect=self.dialect)
 
     def get_query_plain_diff_tables(
         self,
@@ -152,10 +179,14 @@ class BigQueryProcessor(DataProcessor):
             prefix="", column_name_suffix="__2"
         )
 
+        # Consistent logic for both single and multiple primary keys
+        pk_select = ', '.join([f"table1.{pk}" for pk in self.primary_key])
+        join_condition = self._get_primary_key_join_condition()
+        
         inner_merged = parse_one(
             f"""
             select
-                table1.{self.primary_key}
+                {pk_select}
                 , {', '.join(
                     [
                         (
@@ -166,8 +197,7 @@ class BigQueryProcessor(DataProcessor):
                     ]
                 )}
             from table1
-            inner join table2
-                using ({self.primary_key})
+            inner join table2 on {join_condition}
             """,
             dialect=self.dialect,
         )
@@ -204,10 +234,14 @@ class BigQueryProcessor(DataProcessor):
             prefix="table2."
         )
 
+        # Consistent logic for both single and multiple primary keys
+        join_condition = self._get_primary_key_join_condition()
+        count_expr = f"count(table1.{self.primary_key[0]})"  # Use first primary key for counting with table prefix
+        
         count_diff = parse_one(
             f"""
             select
-                count({self.primary_key}) as count_common
+                {count_expr} as count_common
                 , {', '.join(
                     [
                         (
@@ -218,8 +252,7 @@ class BigQueryProcessor(DataProcessor):
                     ]
                 )}
             from table1
-            inner join table2
-                using ({self.primary_key})""",
+            inner join table2 on {join_condition}""",
             dialect=self.dialect,
         )
 
