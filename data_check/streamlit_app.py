@@ -132,11 +132,7 @@ class DataDiff:
             )
 
         st.query_params["sampling_rate"] = st.session_state.sampling_rate
-        # Handle both single and multiple primary keys for query params
-        if isinstance(st.session_state.primary_key, list):
-            st.query_params["primary_key"] = ",".join(st.session_state.primary_key)
-        else:
-            st.query_params["primary_key"] = st.session_state.primary_key
+        st.query_params["primary_key"] = ",".join(st.session_state.primary_key)
         st.query_params["columns_to_compare"] = ",".join(st.session_state.columns_to_compare)
         st.query_params["select_all"] = st.session_state.is_select_all
         st.query_params["table1"] = st.session_state.table1
@@ -158,14 +154,10 @@ class DataDiff:
         st.write("Columns exclusive to table 2 :")
         st.dataframe(diff_columns2, width=1400)
 
-        # Handle both single string and list of strings for primary key
+        # Filter current primary keys to only include valid columns
+        current_primary_keys = []
         if st.session_state.primary_key is not None:
-            if isinstance(st.session_state.primary_key, str):
-                current_primary_keys = [st.session_state.primary_key] if st.session_state.primary_key in common_table_schema.columns_names else []
-            else:
-                current_primary_keys = [pk for pk in st.session_state.primary_key if pk in common_table_schema.columns_names]
-        else:
-            current_primary_keys = []
+            current_primary_keys = [pk for pk in st.session_state.primary_key if pk in common_table_schema.columns_names]
 
         st.multiselect(
             "Select primary key(s) (combination must be unique for a given row):",

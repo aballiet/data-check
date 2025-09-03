@@ -56,13 +56,6 @@ class DataProcessor(ABC):
         if self._primary_key is None:
             raise ValueError("primary_key is not set")
         return self._primary_key
-    
-    @property
-    def primary_key_str(self) -> str:
-        """Return primary key as string for backward compatibility"""
-        if self._primary_key is None:
-            raise ValueError("primary_key is not set")
-        return self._primary_key[0] if len(self._primary_key) == 1 else ",".join(self._primary_key)
 
     @property
     def columns_to_compare(self) -> List[str]:
@@ -283,16 +276,12 @@ class DataProcessor(ABC):
         df_exclusive_table1 = self.client.run_query_to_dataframe(
             self.get_query_exclusive_primary_keys(exclusive_to="table1")
         )
-        if len(self.primary_key) == 1:
-            df_exclusive_table1.set_index(self.primary_key[0], inplace=True)
-        else:
-            df_exclusive_table1.set_index(self.primary_key, inplace=True)
+        # Set index to primary key(s) - use single key or list of keys
+        index_cols = self.primary_key[0] if len(self.primary_key) == 1 else self.primary_key
+        df_exclusive_table1.set_index(index_cols, inplace=True)
 
         df_exclusive_table2 = self.client.run_query_to_dataframe(
             self.get_query_exclusive_primary_keys(exclusive_to="table2")
         )
-        if len(self.primary_key) == 1:
-            df_exclusive_table2.set_index(self.primary_key[0], inplace=True)
-        else:
-            df_exclusive_table2.set_index(self.primary_key, inplace=True)
+        df_exclusive_table2.set_index(index_cols, inplace=True)
         return df_exclusive_table1, df_exclusive_table2
