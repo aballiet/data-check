@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import pandas as pd
 from sqlglot import parse_one
@@ -45,14 +45,14 @@ class DataProcessor(ABC):
         self._sampling_rate = None
 
     def set_config_data(
-        self, primary_key: str, columns_to_compare: List[str], sampling_rate: int
+        self, primary_key: Union[str, List[str]], columns_to_compare: List[str], sampling_rate: int
     ):
-        self._primary_key = primary_key
+        self._primary_key = primary_key if isinstance(primary_key, list) else [primary_key]
         self._columns_to_compare = columns_to_compare
         self._sampling_rate = sampling_rate
 
     @property
-    def primary_key(self) -> str:
+    def primary_key(self) -> List[str]:
         if self._primary_key is None:
             raise ValueError("primary_key is not set")
         return self._primary_key
@@ -276,10 +276,12 @@ class DataProcessor(ABC):
         df_exclusive_table1 = self.client.run_query_to_dataframe(
             self.get_query_exclusive_primary_keys(exclusive_to="table1")
         )
-        df_exclusive_table1.set_index(self.primary_key, inplace=True)
+        # Set index to primary key(s) - use single key or list of keys
+        index_cols = self.primary_key[0] if len(self.primary_key) == 1 else self.primary_key
+        df_exclusive_table1.set_index(index_cols, inplace=True)
 
         df_exclusive_table2 = self.client.run_query_to_dataframe(
             self.get_query_exclusive_primary_keys(exclusive_to="table2")
         )
-        df_exclusive_table2.set_index(self.primary_key, inplace=True)
+        df_exclusive_table2.set_index(index_cols, inplace=True)
         return df_exclusive_table1, df_exclusive_table2
