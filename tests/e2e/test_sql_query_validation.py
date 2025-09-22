@@ -467,8 +467,9 @@ class TestSQLQueryValidation:
         print(f"   ✅ Consistent table and column references")
         print(f"   ✅ End-to-end SQL workflow validated")
 
-        # Return workflow details for further analysis if needed
-        return {step_name: sql for step_name, sql in workflow_steps}
+        # Validate workflow details for further analysis if needed
+        workflow_details = {step_name: sql for step_name, sql in workflow_steps}
+        assert len(workflow_details) == 5, f"Expected 5 workflow steps, got {len(workflow_details)}"
 
     def test_sql_injection_prevention(self, mock_bigquery_processor):
         """

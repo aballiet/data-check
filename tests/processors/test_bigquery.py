@@ -100,12 +100,12 @@ def test_multiple_primary_keys():
 
     # Test the primary key properties
     assert processor.primary_key == ["A", "B"]
-    
+
     # Test primary key concatenation expression
     table1_expr = processor.pk_handler.get_concat_expression("table1")
     expected_table1_expr = "concat(coalesce(cast(table1.A as string), ''), coalesce(cast(table1.B as string), ''))"
     assert table1_expr == expected_table1_expr
-    
+
     # Test join condition
     join_condition = processor.pk_handler.get_join_condition("table1", "table2")
     expected_join = "concat(coalesce(cast(table1.A as string), ''), coalesce(cast(table1.B as string), '')) = concat(coalesce(cast(table2.A as string), ''), coalesce(cast(table2.B as string), ''))"
