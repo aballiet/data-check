@@ -7,6 +7,7 @@ from sqlglot.expressions import Select
 
 from .models.table import TableSchema
 from .query_client import QueryClient
+# Cache manager removed
 
 
 class DataProcessor(ABC):
@@ -47,9 +48,28 @@ class DataProcessor(ABC):
     def set_config_data(
         self, primary_key: Union[str, List[str]], columns_to_compare: List[str], sampling_rate: int
     ):
-        self._primary_key = primary_key if isinstance(primary_key, list) else [primary_key]
+        # Check if primary key is changing to invalidate related caches
+        old_primary_key = getattr(self, '_primary_key', None)
+        
+        # Parse primary key using PrimaryKeyHandler to handle comma-separated strings
+        if isinstance(primary_key, str):
+            from .utils.primary_key_utils import PrimaryKeyHandler
+            pk_handler = PrimaryKeyHandler(primary_key)
+            new_primary_key = pk_handler.keys
+        else:
+            new_primary_key = primary_key
+
+        # Set the new values first
+        self._primary_key = new_primary_key
         self._columns_to_compare = columns_to_compare
         self._sampling_rate = sampling_rate
+
+        if old_primary_key != new_primary_key:
+            # Invalidate caches that depend on primary key
+            # Cache invalidation removed
+            # If this is a BigQuery processor, refresh the primary key handler
+            if hasattr(self, '_refresh_pk_handler'):
+                self._refresh_pk_handler()
 
     @property
     def primary_key(self) -> List[str]:
