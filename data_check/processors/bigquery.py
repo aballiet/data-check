@@ -64,9 +64,11 @@ class BigQueryProcessor(DataProcessor):
     def get_config_hash(self) -> str:
         """Get a hashable representation of the processor configuration."""
         config = {
-            'query1': self.query1,
-            'query2': self.query2,
-            'primary_key': self.primary_key,
+            'query1': str(self.query1),  # Convert SQL expression to string
+            'query2': str(self.query2),  # Convert SQL expression to string
+            'primary_key': getattr(self, '_primary_key', None),
+            'columns_to_compare': getattr(self, '_columns_to_compare', None),
+            'sampling_rate': getattr(self, '_sampling_rate', None),
             'dialect': self.dialect
         }
         return str(sorted(config.items()))

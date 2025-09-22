@@ -35,14 +35,14 @@ class TableSelectionForm:
 
     def _on_submit(self) -> None:
         """Handle form submission."""
-        # Check if tables changed to invalidate caches
+        # Check if tables/queries changed to invalidate caches
         old_table1 = st.session_state.get("table1")
         old_table2 = st.session_state.get("table2")
         new_table1 = st.session_state.temp_table_1
         new_table2 = st.session_state.temp_table_2
 
+        # Clear caches when table content changes (including SQL queries)
         if old_table1 != new_table1 or old_table2 != new_table2:
-            # Clear caches when tables change
             self._clear_caches()
 
         st.session_state.table1 = new_table1
@@ -60,6 +60,7 @@ class TableSelectionForm:
         """Clear all cached results using native Streamlit cache clearing."""
         # Clear Streamlit caches
         st.cache_data.clear()
+        st.cache_resource.clear()
         
         # Clear row difference data from session state
         keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
@@ -197,6 +198,7 @@ class ColumnConfigurationForm:
         """Clear all cached results using native Streamlit cache clearing."""
         # Clear Streamlit caches
         st.cache_data.clear()
+        st.cache_resource.clear()
         
         # Clear row difference data from session state
         keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
@@ -396,8 +398,10 @@ class RowDifferenceViewerComponent:
             self._render_sql_query(query)
 
             # Check if we have cached data for these columns
-            # Include table config in cache key to ensure cache invalidation when tables change
-            table_config_hash = hash((st.session_state.get("table1", ""), st.session_state.get("table2", "")))
+            # Include actual SQL query content in cache key to ensure cache invalidation when queries change
+            table1_content = st.session_state.get("table1", "")
+            table2_content = st.session_state.get("table2", "")
+            table_config_hash = hash((table1_content, table2_content))
             cache_key = f"row_diff_data_{table_config_hash}_{hash(tuple(sorted(selected_columns)))}"
             cached_dataset = st.session_state.get(cache_key)
             has_executed = st.session_state.get(f"{cache_key}_executed", False)
@@ -568,7 +572,7 @@ def render_app_with_components() -> None:
         return
 
     # Get processor
-    processor = _get_processor()
+    processor = _get_processor(st.session_state.table1, st.session_state.table2)
 
     # Column configuration
     with st.form(key="second_step"):
@@ -634,11 +638,11 @@ def _initialize_session_state() -> None:
 
 
 @st.cache_resource
-def _get_processor() -> BigQueryProcessor:
+def _get_processor(table1: str, table2: str) -> BigQueryProcessor:
     """Get BigQuery processor with caching."""
     return BigQueryProcessor(
-        query1=st.session_state.table1,
-        query2=st.session_state.table2,
+        query1=table1,
+        query2=table2,
     )
 
 # Import TableSchema and ColumnSchema for hash functions
