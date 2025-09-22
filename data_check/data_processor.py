@@ -4,6 +4,7 @@ from typing import List, Tuple, Union
 import pandas as pd
 from sqlglot import parse_one
 from sqlglot.expressions import Select
+import streamlit as st
 
 from .models.table import TableSchema
 from .query_client import QueryClient
@@ -305,3 +306,4 @@ class DataProcessor(ABC):
         )
         df_exclusive_table2.set_index(index_cols, inplace=True)
         return df_exclusive_table1, df_exclusive_table2
+

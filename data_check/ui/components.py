@@ -42,8 +42,8 @@ class TableSelectionForm:
         new_table2 = st.session_state.temp_table_2
 
         if old_table1 != new_table1 or old_table2 != new_table2:
-            # Cache invalidation removed - tables changed
-            pass
+            # Clear caches when tables change
+            self._clear_caches()
 
         st.session_state.table1 = new_table1
         st.session_state.table2 = new_table2
@@ -55,6 +55,16 @@ class TableSelectionForm:
         # Update query params
         st.query_params["table1"] = new_table1
         st.query_params["table2"] = new_table2
+
+    def _clear_caches(self) -> None:
+        """Clear all cached results using native Streamlit cache clearing."""
+        # Clear Streamlit caches
+        st.cache_data.clear()
+        
+        # Clear row difference data from session state
+        keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
+        for key in keys_to_remove:
+            del st.session_state[key]
 
 
 class ColumnConfigurationForm:
@@ -160,8 +170,8 @@ class ColumnConfigurationForm:
         # Check if primary key changed to invalidate caches
         old_primary_key = st.session_state.get("primary_key", [])
         if old_primary_key != temp_primary_key:
-            # Cache invalidation removed - primary key changed
-            pass
+            # Clear caches when primary key changes
+            self._clear_caches()
 
         # Update session state
         st.session_state.is_select_all = st.session_state.temp_is_select_all
@@ -183,6 +193,16 @@ class ColumnConfigurationForm:
 
         st.session_state.loaded_tables = True
 
+    def _clear_caches(self) -> None:
+        """Clear all cached results using native Streamlit cache clearing."""
+        # Clear Streamlit caches
+        st.cache_data.clear()
+        
+        # Clear row difference data from session state
+        keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
+        for key in keys_to_remove:
+            del st.session_state[key]
+
 
 class PrimaryKeyAnalysisComponent:
     """Component for primary key analysis and validation."""
@@ -201,16 +221,16 @@ class PrimaryKeyAnalysisComponent:
         self._render_primary_key_overlap()
         return True
 
-    
-    def _validate_primary_key_uniqueness(self) -> bool:
-        """Validate primary key uniqueness."""
-        st.write("Checking primary keys are unique for a given row...")
 
-        primary_keys_unique_table1, error_message_table1 = (
-            self.processor.run_query_check_primary_keys_unique(table="table1")
+    def _validate_primary_key_uniqueness(self) -> bool:
+        """Validate primary key uniqueness with native Streamlit caching."""
+        st.info("🔄 Validating primary key uniqueness...")
+
+        primary_keys_unique_table1, error_message_table1 = _run_query_check_primary_keys_unique_cached(
+            self.processor, "table1"
         )
-        primary_keys_unique_table2, error_message_table2 = (
-            self.processor.run_query_check_primary_keys_unique(table="table2")
+        primary_keys_unique_table2, error_message_table2 = _run_query_check_primary_keys_unique_cached(
+            self.processor, "table2"
         )
 
         if not primary_keys_unique_table1 or not primary_keys_unique_table2:
@@ -224,11 +244,12 @@ class PrimaryKeyAnalysisComponent:
 
         return True
 
-    
+
     def _render_primary_key_overlap(self) -> None:
-        """Render primary key overlap analysis."""
-        st.write("Analyzing primary keys...")
-        results_primary_keys = self.processor.run_query_compare_primary_keys()
+        """Render primary key overlap analysis with native Streamlit caching."""
+        st.info("🔄 Analyzing primary key overlap...")
+
+        results_primary_keys = _run_query_compare_primary_keys_cached(self.processor)
 
         styled_results = style_percentage(
             results_primary_keys, columns=["missing_primary_keys_ratio"]
@@ -267,7 +288,6 @@ class ColumnDifferenceAnalysisComponent:
 
     def render(self) -> Optional[List[str]]:
         """Render column difference analysis and return selected columns."""
-        st.write("Computing difference ratio...")
 
         # Get and validate results
         results_ratio_per_column = self._get_column_diff_ratios()
@@ -282,13 +302,16 @@ class ColumnDifferenceAnalysisComponent:
 
         return selected_columns
 
-    
+
     def _get_column_diff_ratios(self) -> Optional[pd.DataFrame]:
-        """Get column difference ratios with caching."""
+        """Get column difference ratios with native Streamlit caching."""
         try:
-            results_ratio_per_column = self.processor.get_column_diff_ratios(
-                selected_columns=st.session_state.columns_to_compare,
-                common_table_schema=st.session_state.common_table_schema,
+            st.info("🔄 Computing column difference ratios...")
+            
+            results_ratio_per_column = _get_column_diff_ratios_cached(
+                self.processor,
+                st.session_state.columns_to_compare,
+                st.session_state.common_table_schema,
             )
 
             # Check if dataframe is empty
@@ -298,6 +321,7 @@ class ColumnDifferenceAnalysisComponent:
                     "Please double check that the SQL queries entered are returning rows."
                 )
                 st.stop()
+            
         except Exception as e:
             st.error(f"❌ **Column analysis failed:** {str(e)}")
             st.write("**Please check your configuration and try again.**")
@@ -371,6 +395,13 @@ class RowDifferenceViewerComponent:
 
             self._render_sql_query(query)
 
+            # Check if we have cached data for these columns
+            # Include table config in cache key to ensure cache invalidation when tables change
+            table_config_hash = hash((st.session_state.get("table1", ""), st.session_state.get("table2", "")))
+            cache_key = f"row_diff_data_{table_config_hash}_{hash(tuple(sorted(selected_columns)))}"
+            cached_dataset = st.session_state.get(cache_key)
+            has_executed = st.session_state.get(f"{cache_key}_executed", False)
+
             # Add a button to execute the query
             if st.button("🚀 Execute Query", help="Click to run the SQL query on BigQuery"):
                 with st.spinner("Executing query..."):
@@ -380,7 +411,16 @@ class RowDifferenceViewerComponent:
                         if dataset.empty:
                             st.write("No difference found ✅")
                             st.dataframe(dataset)
+                            # Clear any cached data since result is empty
+                            if cache_key in st.session_state:
+                                del st.session_state[cache_key]
+                            if f"{cache_key}_executed" in st.session_state:
+                                del st.session_state[f"{cache_key}_executed"]
                             return
+
+                        # Store dataset in session state
+                        st.session_state[cache_key] = dataset
+                        st.session_state[f"{cache_key}_executed"] = True
 
                         # Render data with controls
                         self._render_data_with_controls(dataset, selected_columns)
@@ -392,6 +432,10 @@ class RowDifferenceViewerComponent:
                         st.write("- Syntax errors in SQL")
                         st.write("- Missing table permissions")
                         st.write("- Network connectivity issues")
+            elif has_executed and cached_dataset is not None:
+                # Show cached data with controls
+                st.info("📊 Showing cached results. Click 'Execute Query' to refresh data.")
+                self._render_data_with_controls(cached_dataset, selected_columns)
             else:
                 st.info("👆 Click 'Execute Query' above to run this SQL query and see the results")
 
@@ -416,7 +460,7 @@ class RowDifferenceViewerComponent:
             common_table_schema=filtered_columns,
         )
 
-    
+
     def _execute_difference_query(self, query) -> pd.DataFrame:
         """Execute the difference query and return the dataset."""
         return self.processor.client.run_query_to_dataframe(query)
@@ -596,3 +640,49 @@ def _get_processor() -> BigQueryProcessor:
         query1=st.session_state.table1,
         query2=st.session_state.table2,
     )
+
+# Import TableSchema and ColumnSchema for hash functions
+from data_check.models.table import TableSchema, ColumnSchema
+
+# Hash functions for unhashable types
+def _hash_table_schema(table_schema):
+    """Hash function for TableSchema objects."""
+    if table_schema is None:
+        return None
+    return f"TableSchema_{table_schema.table_name}_{sorted([col.name for col in table_schema.columns])}"
+
+def _hash_column_schema(column_schema):
+    """Hash function for ColumnSchema objects."""
+    if column_schema is None:
+        return None
+    return f"ColumnSchema_{column_schema.name}_{column_schema.field_type}_{column_schema.mode}"
+
+def _hash_list_of_strings(lst):
+    """Hash function for lists of strings."""
+    if lst is None:
+        return None
+    return tuple(sorted(lst)) if lst else ()
+
+# Native Streamlit caching functions with 1-minute TTL
+# Use hash_funcs to handle unhashable parameters
+@st.cache_data(ttl=60, hash_funcs={
+    BigQueryProcessor: lambda x: x.get_config_hash(),
+    TableSchema: _hash_table_schema,
+    ColumnSchema: _hash_column_schema,
+    list: _hash_list_of_strings
+})  # 1 minute = 60 seconds
+def _get_column_diff_ratios_cached(processor, selected_columns, common_table_schema):
+    """Cached wrapper for column diff ratios with 1-minute TTL."""
+    return processor.get_column_diff_ratios(selected_columns, common_table_schema)
+
+
+@st.cache_data(ttl=60, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 1 minute = 60 seconds
+def _run_query_check_primary_keys_unique_cached(processor, table):
+    """Cached wrapper for primary key uniqueness check with 1-minute TTL."""
+    return processor.run_query_check_primary_keys_unique(table)
+
+
+@st.cache_data(ttl=60, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 1 minute = 60 seconds
+def _run_query_compare_primary_keys_cached(processor):
+    """Cached wrapper for primary key comparison with 1-minute TTL."""
+    return processor.run_query_compare_primary_keys()

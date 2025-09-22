@@ -61,11 +61,20 @@ class BigQueryProcessor(DataProcessor):
             self._pk_handler = PrimaryKeyHandler(self.primary_key)
         return self._pk_handler
 
+    def get_config_hash(self) -> str:
+        """Get a hashable representation of the processor configuration."""
+        config = {
+            'query1': self.query1,
+            'query2': self.query2,
+            'primary_key': self.primary_key,
+            'dialect': self.dialect
+        }
+        return str(sorted(config.items()))
+
     def _refresh_pk_handler(self) -> None:
         """Refresh primary key handler when primary keys change."""
         self._pk_handler = PrimaryKeyHandler(self.primary_key)
 
-    
     def get_query_insight_tables_primary_keys(self) -> Select:
         """Compare the primary keys of two tables"""
         table1_pk_expr = self.pk_handler.get_concat_expression("table1")
