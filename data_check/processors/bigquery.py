@@ -61,18 +61,6 @@ class BigQueryProcessor(DataProcessor):
             self._pk_handler = PrimaryKeyHandler(self.primary_key)
         return self._pk_handler
 
-    def get_config_hash(self) -> str:
-        """Get a hashable representation of the processor configuration."""
-        config = {
-            'query1': str(self.query1),  # Convert SQL expression to string
-            'query2': str(self.query2),  # Convert SQL expression to string
-            'primary_key': getattr(self, '_primary_key', None),
-            'columns_to_compare': getattr(self, '_columns_to_compare', None),
-            'sampling_rate': getattr(self, '_sampling_rate', None),
-            'dialect': self.dialect
-        }
-        return str(sorted(config.items()))
-
     def _refresh_pk_handler(self) -> None:
         """Refresh primary key handler when primary keys change."""
         self._pk_handler = PrimaryKeyHandler(self.primary_key)

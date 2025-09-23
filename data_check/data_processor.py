@@ -8,8 +8,6 @@ import streamlit as st
 
 from .models.table import TableSchema
 from .query_client import QueryClient
-# Cache manager removed
-
 
 class DataProcessor(ABC):
     def __init__(
@@ -51,7 +49,7 @@ class DataProcessor(ABC):
     ):
         # Check if primary key is changing to invalidate related caches
         old_primary_key = getattr(self, '_primary_key', None)
-        
+
         # Parse primary key using PrimaryKeyHandler to handle comma-separated strings
         if isinstance(primary_key, str):
             from .utils.primary_key_utils import PrimaryKeyHandler
@@ -71,6 +69,29 @@ class DataProcessor(ABC):
             # If this is a BigQuery processor, refresh the primary key handler
             if hasattr(self, '_refresh_pk_handler'):
                 self._refresh_pk_handler()
+
+    @property
+    def config_hash(self) -> str:
+        """Get a hashable representation of the processor configuration."""
+        config = {
+            'query1': str(self.query1),  # Convert SQL expression to string
+            'query2': str(self.query2),  # Convert SQL expression to string
+            'primary_key': getattr(self, '_primary_key', None),
+            'columns_to_compare': getattr(self, '_columns_to_compare', None),
+            'sampling_rate': getattr(self, '_sampling_rate', None),
+            'dialect': self.dialect
+        }
+        return str(sorted(config.items()))
+
+    @property
+    def table_hash(self) -> str:
+        """Get a hashable representation of source query config."""
+        config = {
+            'query1': str(self.query1),  # Convert SQL expression to string
+            'query2': str(self.query2),  # Convert SQL expression to string
+            'dialect': self.dialect
+        }
+        return str(sorted(config.items()))
 
     @property
     def primary_key(self) -> List[str]:
@@ -274,14 +295,14 @@ class DataProcessor(ABC):
         )
         df = self.client.run_query_to_dataframe(query)
         return query, df
-    
+
     def run_query_check_primary_keys_unique(self, table: str) -> Tuple[bool, str]:
         """Check if the primary keys are unique for a given row"""
         query = self.get_query_check_primary_keys_unique(table_name=table)
         df = self.client.run_query_to_dataframe(query)
 
         if not df.empty:
-            error_message = f"Primary key is not unique for {table}: . You can use the query: {query.sql()} to check it."
+            error_message = f"-- Primary key is not unique for {table}, use the following query to check it: \n {query.sql(pretty=True, dialect=self.dialect)}"
             return False, error_message
 
         return True, ""

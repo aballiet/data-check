@@ -229,9 +229,9 @@ class PrimaryKeyAnalysisComponent:
         if not primary_keys_unique_table1 or not primary_keys_unique_table2:
             st.write("Primary keys are not unique for a given row ❌")
             if error_message_table1:
-                st.write(error_message_table1)
+                st.code(error_message_table1, language="sql")
             if error_message_table2:
-                st.write(error_message_table2)
+                st.code(error_message_table2, language="sql")
             st.stop()
             return False
 
@@ -300,7 +300,7 @@ class ColumnDifferenceAnalysisComponent:
         """Get column difference ratios with native Streamlit caching."""
         try:
             st.info("🔄 Computing column difference ratios...")
-            
+
             results_ratio_per_column = _get_column_diff_ratios_cached(
                 self.processor,
                 st.session_state.columns_to_compare,
@@ -314,7 +314,7 @@ class ColumnDifferenceAnalysisComponent:
                     "Please double check that the SQL queries entered are returning rows."
                 )
                 st.stop()
-            
+
         except Exception as e:
             st.error(f"❌ **Column analysis failed:** {str(e)}")
             st.write("**Please check your configuration and try again.**")
@@ -661,7 +661,7 @@ def _hash_list_of_strings(lst):
 # Native Streamlit caching functions with 1-minute TTL
 # Use hash_funcs to handle unhashable parameters
 @st.cache_data(ttl=60, hash_funcs={
-    BigQueryProcessor: lambda x: x.get_config_hash(),
+    BigQueryProcessor: lambda x: x.config_hash,
     TableSchema: _hash_table_schema,
     ColumnSchema: _hash_column_schema,
     list: _hash_list_of_strings
@@ -671,31 +671,31 @@ def _get_column_diff_ratios_cached(processor, selected_columns, common_table_sch
     return processor.get_column_diff_ratios(selected_columns, common_table_schema)
 
 
-@st.cache_data(ttl=60, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 1 minute = 60 seconds
+@st.cache_data(ttl=60, hash_funcs={BigQueryProcessor: lambda x: x.config_hash})  # 1 minute = 60 seconds
 def _run_query_check_primary_keys_unique_cached(processor, table):
     """Cached wrapper for primary key uniqueness check with 1-minute TTL."""
     return processor.run_query_check_primary_keys_unique(table)
 
 
-@st.cache_data(ttl=60, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 1 minute = 60 seconds
+@st.cache_data(ttl=60, hash_funcs={BigQueryProcessor: lambda x: x.config_hash})  # 1 minute = 60 seconds
 def _run_query_compare_primary_keys_cached(processor):
     """Cached wrapper for primary key comparison with 1-minute TTL."""
     return processor.run_query_compare_primary_keys()
 
 
-@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 5 minutes = 300 seconds
+@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.table_hash})  # 5 minutes = 300 seconds
 def _get_common_schema_cached(processor) -> TableSchema:
     """Cached wrapper for common schema with 5-minute TTL."""
     return processor.get_common_schema_from_tables()
 
 
-@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 5 minutes = 300 seconds
+@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.table_hash})  # 5 minutes = 300 seconds
 def _get_diff_columns_cached(processor) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Cached wrapper for diff columns with 5-minute TTL."""
     return processor.get_diff_columns()
 
 
-@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 5 minutes = 300 seconds
+@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.table_hash})  # 5 minutes = 300 seconds
 def _get_schema_analysis_cached(processor) -> Dict[str, Any]:
     """Cached wrapper for schema analysis with 5-minute TTL."""
     common_table_schema = _get_common_schema_cached(processor)
