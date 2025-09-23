@@ -60,7 +60,6 @@ class TableSelectionForm:
         """Clear all cached results using native Streamlit cache clearing."""
         # Clear Streamlit caches
         st.cache_data.clear()
-        st.cache_resource.clear()
         
         # Clear row difference data from session state
         keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
@@ -77,14 +76,7 @@ class ColumnConfigurationForm:
 
     def _get_schema_analysis(self) -> Dict[str, Any]:
         """Get schema analysis with caching."""
-        common_table_schema = self.processor.get_common_schema_from_tables()
-        diff_columns1, diff_columns2 = self.processor.get_diff_columns()
-
-        return {
-            "common_schema": common_table_schema,
-            "diff_columns1": diff_columns1,
-            "diff_columns2": diff_columns2
-        }
+        return _get_schema_analysis_cached(self.processor)
 
     def render(self) -> bool:
         """Render the column configuration form."""
@@ -198,7 +190,6 @@ class ColumnConfigurationForm:
         """Clear all cached results using native Streamlit cache clearing."""
         # Clear Streamlit caches
         st.cache_data.clear()
-        st.cache_resource.clear()
         
         # Clear row difference data from session state
         keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
@@ -690,3 +681,28 @@ def _run_query_check_primary_keys_unique_cached(processor, table):
 def _run_query_compare_primary_keys_cached(processor):
     """Cached wrapper for primary key comparison with 1-minute TTL."""
     return processor.run_query_compare_primary_keys()
+
+
+@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 5 minutes = 300 seconds
+def _get_common_schema_cached(processor) -> TableSchema:
+    """Cached wrapper for common schema with 5-minute TTL."""
+    return processor.get_common_schema_from_tables()
+
+
+@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 5 minutes = 300 seconds
+def _get_diff_columns_cached(processor) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Cached wrapper for diff columns with 5-minute TTL."""
+    return processor.get_diff_columns()
+
+
+@st.cache_data(ttl=300, hash_funcs={BigQueryProcessor: lambda x: x.get_config_hash()})  # 5 minutes = 300 seconds
+def _get_schema_analysis_cached(processor) -> Dict[str, Any]:
+    """Cached wrapper for schema analysis with 5-minute TTL."""
+    common_table_schema = _get_common_schema_cached(processor)
+    diff_columns1, diff_columns2 = _get_diff_columns_cached(processor)
+
+    return {
+        "common_schema": common_table_schema,
+        "diff_columns1": diff_columns1,
+        "diff_columns2": diff_columns2
+    }
