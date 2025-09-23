@@ -1,0 +1,40 @@
+name: Pytest
+
+on:
+  pull_request:
+    paths:
+      - 'data_check/**'
+      - 'tests/**'
+      - '.github/workflows/pytest.yml'
+      - '.coveragerc'
+      - 'pytest.ini'
+      - 'pyproject.toml'
+      - 'README.md'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run pytest
+      run: |
+        uv run pytest -v

@@ -54,7 +54,7 @@ def test_get_query_plain_diff_tables():
 
     assert (
         result.sql()
-        == f"""WITH table1 AS (SELECT * FROM table1), table2 AS (SELECT * FROM table2), inner_merged AS (SELECT table1.A, table1.B AS B__1, table2.B AS B__2, table1.C AS C__1, table2.C AS C__2 FROM table1 INNER JOIN table2 ON table1.A = table2.A), final_result AS (SELECT * FROM inner_merged WHERE COALESCE(CAST(B__1 AS TEXT), "none") <> COALESCE(CAST(B__2 AS TEXT), "none") OR COALESCE(C__1, "none") <> COALESCE(C__2, "none")) SELECT * FROM final_result"""
+        == f"""WITH table1 AS (SELECT * FROM table1), table2 AS (SELECT * FROM table2), inner_merged AS (SELECT table1.A, table1.B AS B__1, table2.B AS B__2, table1.C AS C__1, table2.C AS C__2 FROM table1 INNER JOIN table2 ON table1.A = table2.A), final_result AS (SELECT * FROM inner_merged WHERE COALESCE(CAST(B__1 AS TEXT), 'none') <> COALESCE(CAST(B__2 AS TEXT), 'none') OR COALESCE(C__1, 'none') <> COALESCE(C__2, 'none')) SELECT * FROM final_result"""
     )
 
 
@@ -80,7 +80,7 @@ def test_query_ratio_common_values_per_column():
 
     assert (
         result.sql()
-        == f"WITH table1 AS (SELECT * FROM table1), table2 AS (SELECT * FROM table2), count_diff AS (SELECT COUNT(table1.A) AS count_common, COUNT_IF(NOT COALESCE(CAST(table1.A AS TEXT), CAST(table2.A AS TEXT)) IS NULL) AS A_count_not_null, COUNT_IF(COALESCE(CAST(table1.A AS TEXT), 'none') = COALESCE(CAST(table2.A AS TEXT), 'non')) AS A, COUNT_IF(NOT COALESCE(CAST(table1.B AS TEXT), CAST(table2.B AS TEXT)) IS NULL) AS B_count_not_null, COUNT_IF(COALESCE(CAST(table1.B AS TEXT), 'none') = COALESCE(CAST(table2.B AS TEXT), 'non')) AS B, COUNT_IF(NOT COALESCE(table1.C, table2.C) IS NULL) AS C_count_not_null, COUNT_IF(COALESCE(table1.C, 'none') = COALESCE(table2.C, 'non')) AS C FROM table1 INNER JOIN table2 ON table1.A = table2.A), final_result AS (SELECT STRUCT(CASE WHEN count_common <> 0 THEN A_count_not_null / count_common ELSE NULL END AS ratio_not_null, CASE WHEN A_count_not_null <> 0 THEN A / A_count_not_null ELSE NULL END AS ratio_equal) AS A, STRUCT(CASE WHEN count_common <> 0 THEN B_count_not_null / count_common ELSE NULL END AS ratio_not_null, CASE WHEN B_count_not_null <> 0 THEN B / B_count_not_null ELSE NULL END AS ratio_equal) AS B, STRUCT(CASE WHEN count_common <> 0 THEN C_count_not_null / count_common ELSE NULL END AS ratio_not_null, CASE WHEN C_count_not_null <> 0 THEN C / C_count_not_null ELSE NULL END AS ratio_equal) AS C FROM count_diff) SELECT * FROM final_result"
+        == f"WITH table1 AS (SELECT * FROM table1), table2 AS (SELECT * FROM table2), count_diff AS (SELECT COUNT(table1.A) AS count_common, COUNT_IF(NOT COALESCE(CAST(table1.A AS TEXT), CAST(table2.A AS TEXT)) IS NULL) AS A_count_not_null, COUNT_IF(CAST(table1.A AS TEXT) = CAST(table2.A AS TEXT)) AS A, COUNT_IF(NOT COALESCE(CAST(table1.B AS TEXT), CAST(table2.B AS TEXT)) IS NULL) AS B_count_not_null, COUNT_IF(CAST(table1.B AS TEXT) = CAST(table2.B AS TEXT)) AS B, COUNT_IF(NOT COALESCE(table1.C, table2.C) IS NULL) AS C_count_not_null, COUNT_IF(table1.C = table2.C) AS C FROM table1 INNER JOIN table2 ON table1.A = table2.A), final_result AS (SELECT STRUCT(CASE WHEN count_common <> 0 THEN A_count_not_null / count_common ELSE NULL END AS ratio_not_null, CASE WHEN A_count_not_null <> 0 THEN A / A_count_not_null ELSE NULL END AS ratio_equal) AS A, STRUCT(CASE WHEN count_common <> 0 THEN B_count_not_null / count_common ELSE NULL END AS ratio_not_null, CASE WHEN B_count_not_null <> 0 THEN B / B_count_not_null ELSE NULL END AS ratio_equal) AS B, STRUCT(CASE WHEN count_common <> 0 THEN C_count_not_null / count_common ELSE NULL END AS ratio_not_null, CASE WHEN C_count_not_null <> 0 THEN C / C_count_not_null ELSE NULL END AS ratio_equal) AS C FROM count_diff) SELECT * FROM final_result"
     )
 
 
@@ -100,14 +100,14 @@ def test_multiple_primary_keys():
 
     # Test the primary key properties
     assert processor.primary_key == ["A", "B"]
-    
+
     # Test primary key concatenation expression
-    table1_expr = processor._get_primary_key_concat_expr("table1")
+    table1_expr = processor.pk_handler.get_concat_expression("table1")
     expected_table1_expr = "concat(coalesce(cast(table1.A as string), ''), coalesce(cast(table1.B as string), ''))"
     assert table1_expr == expected_table1_expr
-    
+
     # Test join condition
-    join_condition = processor._get_primary_key_join_condition()
+    join_condition = processor.pk_handler.get_join_condition("table1", "table2")
     expected_join = "concat(coalesce(cast(table1.A as string), ''), coalesce(cast(table1.B as string), '')) = concat(coalesce(cast(table2.A as string), ''), coalesce(cast(table2.B as string), ''))"
     assert join_condition == expected_join
 

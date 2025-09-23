@@ -54,14 +54,22 @@ class QueryBigQuery(QueryClient):
         return result[0]
 
     def _run_query_to_dataframe(_self, query: str, timeout_seconds: int = TIMEOUT_BIGQUERY) -> pd.DataFrame:
-        return _self.run_query_job_with_timeout(query, timeout_seconds=timeout_seconds).to_dataframe()
+        query_result = _self.run_query_job_with_timeout(query, timeout_seconds=timeout_seconds)
+        if query_result is None:
+            raise RuntimeError("BigQuery query failed or timed out - no result returned")
+        if isinstance(query_result, Exception):
+            raise query_result  # Re-raise the BigQuery error
+        return query_result.to_dataframe()
 
     def run_query_to_dataframe(self, query: Select, timeout_seconds: int = TIMEOUT_BIGQUERY) -> pd.DataFrame:
         return self._run_query_to_dataframe(query.sql(dialect=self.dialect), timeout_seconds=timeout_seconds)
 
     @staticmethod
     def get_query_job_result(query_job: QueryJob, result):
-        result[0] = query_job.result()
+        try:
+            result[0] = query_job.result()
+        except Exception as e:
+            result[0] = e  # Store the error instead of raising it
         return result
 
     def run_query_job(_self, query: str) -> bigquery.QueryJob:
