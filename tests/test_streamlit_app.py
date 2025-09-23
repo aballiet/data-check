@@ -18,14 +18,14 @@ class TestStreamlitApp:
         # Mock st.set_page_config and st.title
         mock_st.set_page_config = Mock()
         mock_st.title = Mock()
-        
+
         # Create DataDiff instance
         data_diff = DataDiff()
-        
+
         # Verify that page config and title were set
         mock_st.set_page_config.assert_called_once_with(layout="wide")
         mock_st.title.assert_called_once_with("data-check 🔍")
-        
+
         # Verify instance was created
         assert isinstance(data_diff, DataDiff)
 
@@ -36,10 +36,10 @@ class TestStreamlitApp:
         with patch('data_check.streamlit_app.st') as mock_st:
             mock_st.set_page_config = Mock()
             mock_st.title = Mock()
-            
+
             data_diff = DataDiff()
             data_diff.window()
-            
+
             # Verify that render_app_with_components was called
             mock_render_app.assert_called_once()
 
@@ -50,10 +50,10 @@ class TestStreamlitApp:
         # Mock the st methods
         mock_st.set_page_config = Mock()
         mock_st.title = Mock()
-        
+
         # Import and execute the main block
         import data_check.streamlit_app
-        
+
         # The main block should create a DataDiff instance and call window()
         # This is tested indirectly through the module import
         assert True  # If we get here without errors, the main block works

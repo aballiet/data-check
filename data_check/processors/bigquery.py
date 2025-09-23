@@ -108,7 +108,7 @@ class BigQueryProcessor(DataProcessor):
 
         return query
 
-    
+
     def get_query_check_primary_keys_unique(self, table_name: str) -> Select:
         """Check if the primary keys are unique for a given row"""
         return self.pk_handler.validate_uniqueness_query(
@@ -158,7 +158,7 @@ class BigQueryProcessor(DataProcessor):
                 .limit(limit)
             )
 
-    
+
     def get_query_plain_diff_tables(
         self,
         common_table_schema: TableSchema,
@@ -179,7 +179,7 @@ class BigQueryProcessor(DataProcessor):
                 alias(column(col, table="table1"), f"{col}__1"),
                 alias(column(col, table="table2"), f"{col}__2")
             ])
-        
+
         # Always use ON condition for consistency
         join_condition = condition(self.pk_handler.get_join_condition())
         inner_merged = (
@@ -194,7 +194,7 @@ class BigQueryProcessor(DataProcessor):
             where_conditions.append(
                 condition(f'coalesce({cast_fields_1[index]}, \'none\') <> coalesce({cast_fields_2[index]}, \'none\')')
             )
-        
+
         # Chain OR conditions properly
         if len(where_conditions) == 0:
             where_clause = None
@@ -205,7 +205,7 @@ class BigQueryProcessor(DataProcessor):
             where_clause = where_conditions[0]
             for cond in where_conditions[1:]:
                 where_clause = func("or", where_clause, cond)
-        
+
         final_result = (
             select("*")
             .from_("inner_merged")
@@ -223,7 +223,7 @@ class BigQueryProcessor(DataProcessor):
 
         return query
 
-    
+
     def query_ratio_common_values_per_column(
         self, common_table_schema: TableSchema
     ) -> Select:
@@ -240,7 +240,7 @@ class BigQueryProcessor(DataProcessor):
         # Build count_diff query using sqlglot expressions
         first_pk = self.pk_handler.get_single_key() if self.pk_handler.is_single_key else self.pk_handler.keys[0]
         count_columns = [alias(func("count", column(first_pk, table="table1")), "count_common")]
-        
+
         for index, col_name in enumerate(common_table_schema.columns_names):
             count_columns.extend([
                 alias(
@@ -252,7 +252,7 @@ class BigQueryProcessor(DataProcessor):
                     col_name
                 )
             ])
-        
+
         # Always use ON condition for consistency
         join_condition_expr = condition(self.pk_handler.get_join_condition())
         count_diff = (
@@ -273,7 +273,7 @@ class BigQueryProcessor(DataProcessor):
                     col_name
                 )
             )
-        
+
         final_result = select(*struct_columns).from_("count_diff")
 
         query = (

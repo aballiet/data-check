@@ -30,7 +30,7 @@ class TestEndToEndDataComparison:
 
             # Mock table schema using proper TableSchema objects
             from data_check.models.table import TableSchema, ColumnSchema, BigQueryDataType
-            
+
             schema_table = TableSchema(
                 table_name="test_table",
                 columns=[
@@ -39,12 +39,12 @@ class TestEndToEndDataComparison:
                     ColumnSchema("value", BigQueryDataType.FLOAT, None),
                 ]
             )
-            
+
             mock_table = Mock()
             mock_table.table_id = "test_table"
             mock_table.schema = schema_table.columns
             mock_client.get_table.return_value = mock_table
-            
+
             # Mock schema methods
             mock_client.get_table_schema_from_table.return_value = schema_table
             mock_client.get_table_schema_from_sql.return_value = schema_table
@@ -58,14 +58,14 @@ class TestEndToEndDataComparison:
             })
             mock_result.schema = mock_table.schema
             mock_client.query.return_value.result.return_value = mock_result
-            
+
             # Mock run_query_to_dataframe method
             def mock_run_query_to_dataframe(query_str):
                 # Convert SQLGlot Select object to string if needed
                 if hasattr(query_str, 'sql'):
                     query_str = query_str.sql(pretty=True, dialect="bigquery")
                 query_lower = str(query_str).lower()
-                
+
                 if 'countif' in query_lower and 'missing_primary_key' in query_lower:
                     # Primary key comparison
                     return pd.DataFrame({
@@ -107,7 +107,7 @@ class TestEndToEndDataComparison:
                         'name': ['Alice', 'Bob', 'Charlie'],
                         'value': [10.5, 20.0, 30.2]
                     })
-            
+
             mock_client.run_query_to_dataframe.side_effect = mock_run_query_to_dataframe
 
             yield {
@@ -239,7 +239,7 @@ class TestEndToEndDataComparison:
                 columns_to_compare=["name"],
                 sampling_rate=100
             )
-            
+
             with pytest.raises(Exception):
                 processor.get_schemas()  # This actually calls the client
                 # This would fail when trying to execute queries
@@ -432,7 +432,7 @@ class TestDataProcessorIntegration:
         """Set up comprehensive mock responses."""
         # Mock schema responses using proper TableSchema objects
         from data_check.models.table import TableSchema, ColumnSchema, BigQueryDataType
-        
+
         schema1 = TableSchema(
             table_name="table1",
             columns=[
@@ -461,7 +461,7 @@ class TestDataProcessorIntegration:
         mock_table2.schema = schema2.columns
 
         mock_client.get_table.side_effect = [mock_table1, mock_table2]
-        
+
         # Mock schema methods
         mock_client.get_table_schema_from_table.side_effect = [schema1, schema2]
         mock_client.get_table_schema_from_sql.side_effect = lambda query: schema1 if 'table1' in str(query) else schema2
@@ -491,14 +491,14 @@ class TestDataProcessorIntegration:
             return Mock(result=Mock(return_value=mock_result))
 
         mock_client.query.side_effect = mock_query_execution
-        
+
         # Mock run_query_to_dataframe method
         def mock_run_query_to_dataframe(query_str):
             # Convert SQLGlot Select object to string if needed
             if hasattr(query_str, 'sql'):
                 query_str = query_str.sql(pretty=True, dialect="bigquery")
             query_lower = str(query_str).lower()
-            
+
             if 'countif' in query_lower and 'missing_primary_key' in query_lower:
                 # Primary key comparison
                 return pd.DataFrame({
@@ -540,7 +540,7 @@ class TestDataProcessorIntegration:
                     'name': ['Alice', 'Bob', 'Charlie'],
                     'value': [10.5, 20.0, 30.2]
                 })
-        
+
         mock_client.run_query_to_dataframe.side_effect = mock_run_query_to_dataframe
 
     def test_schema_analysis_integration(self, processor_with_mock_client):

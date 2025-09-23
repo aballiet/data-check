@@ -60,7 +60,7 @@ class TableSelectionForm:
         """Clear all cached results using native Streamlit cache clearing."""
         # Clear Streamlit caches
         st.cache_data.clear()
-        
+
         # Clear row difference data from session state
         keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
         for key in keys_to_remove:
@@ -190,7 +190,7 @@ class ColumnConfigurationForm:
         """Clear all cached results using native Streamlit cache clearing."""
         # Clear Streamlit caches
         st.cache_data.clear()
-        
+
         # Clear row difference data from session state
         keys_to_remove = [key for key in st.session_state.keys() if key.startswith("row_diff_data_")]
         for key in keys_to_remove:

@@ -31,7 +31,7 @@ class TestDataFormatter:
         """Test style_percentage with DataFrame input."""
         columns = ['col1', 'col2']
         result = style_percentage(sample_dataframe, columns)
-        
+
         assert isinstance(result, Styler)
         # The function should return a Styler object
         assert result is not None
@@ -41,7 +41,7 @@ class TestDataFormatter:
         columns = ['col1', 'col2']
         styler = sample_dataframe.style
         result = style_percentage(styler, columns)
-        
+
         assert isinstance(result, Styler)
         assert result is not None
 
@@ -49,7 +49,7 @@ class TestDataFormatter:
         """Test style_gradient with DataFrame input."""
         columns = ['col1', 'col2']
         result = style_gradient(sample_dataframe, columns)
-        
+
         assert isinstance(result, Styler)
         assert result is not None
 
@@ -58,7 +58,7 @@ class TestDataFormatter:
         columns = ['col1', 'col2']
         styler = sample_dataframe.style
         result = style_gradient(styler, columns)
-        
+
         assert isinstance(result, Styler)
         assert result is not None
 
@@ -66,7 +66,7 @@ class TestDataFormatter:
         """Test style_gradient with custom gradient color."""
         columns = ['col1', 'col2']
         result = style_gradient(sample_dataframe, columns, "blue,green")
-        
+
         assert isinstance(result, Styler)
         assert result is not None
 
@@ -79,10 +79,10 @@ class TestDataFormatter:
             'col2__1': [1, 2, 3],
             'col2__2': [1, 2, 4]
         })
-        
+
         columns = ['col1', 'col2']
         result = highlight_diff(data, columns)
-        
+
         assert isinstance(result, pd.DataFrame)
         assert result.shape == data.shape
         # Check that differences are highlighted
@@ -99,10 +99,10 @@ class TestDataFormatter:
             'col2__1': [1, 2, 3],
             'col2__2': [1, 2, 3]
         })
-        
+
         columns = ['col1', 'col2']
         result = highlight_diff(data, columns)
-        
+
         assert isinstance(result, pd.DataFrame)
         # All values should be empty strings (no highlighting)
         assert (result == '').all().all()
@@ -115,9 +115,9 @@ class TestDataFormatter:
             'col2__1': [1, 2, 3],
             'col2__2': [1, 2, 4]
         })
-        
+
         columns = ['col1', 'col2']
         result = highlight_diff_dataset(data, columns)
-        
+
         assert isinstance(result, Styler)
         assert result is not None

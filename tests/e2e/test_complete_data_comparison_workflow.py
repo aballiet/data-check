@@ -197,7 +197,7 @@ class TestCompleteDataComparisonWorkflow:
 
             # Mock schema methods
             from data_check.models.table import TableSchema, ColumnSchema, BigQueryDataType
-            
+
             # Create proper TableSchema objects
             schema_2023_table = TableSchema(
                 table_name="customer_2023",
@@ -212,21 +212,21 @@ class TestCompleteDataComparisonWorkflow:
                     ColumnSchema("phone", BigQueryDataType.STRING, None),
                 ]
             )
-            
+
             schema_2024_table = TableSchema(
                 table_name="customer_2024",
                 columns=schema_2023_table.columns + [
                     ColumnSchema("loyalty_tier", BigQueryDataType.STRING, None),
                 ]
             )
-            
+
             # Mock the schema methods
             def mock_get_table_schema_from_table(table_name):
                 if '2023' in table_name:
                     return schema_2023_table
                 else:
                     return schema_2024_table
-            
+
             mock_client.get_table_schema_from_table.side_effect = mock_get_table_schema_from_table
             mock_client.get_table_schema_from_sql.return_value = schema_2023_table
 
@@ -236,13 +236,13 @@ class TestCompleteDataComparisonWorkflow:
                 if hasattr(query_str, 'sql'):
                     query_str = query_str.sql(pretty=True, dialect="bigquery")
                 query_lower = str(query_str).lower()
-                
+
                 # Debug output
                 if 'ratio' in query_lower or 'common' in query_lower:
                     print(f"DEBUG: Column diff query detected: {query_lower[:100]}...")
                 if 'exclusive' in query_lower or ('left join' in query_lower and 'is null' in query_lower):
                     print(f"DEBUG: Exclusive primary keys query detected: {query_lower[:100]}...")
-                
+
                 if 'countif' in query_lower and 'missing_primary_key' in query_lower:
                     # Primary key comparison
                     return pd.DataFrame({
@@ -286,7 +286,7 @@ class TestCompleteDataComparisonWorkflow:
                 else:
                     # Default empty response
                     return pd.DataFrame()
-            
+
             mock_client.run_query_to_dataframe.side_effect = mock_run_query_to_dataframe
 
             # Create the processor
