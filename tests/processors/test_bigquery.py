@@ -42,6 +42,7 @@ def test_bigquery_processor_init_with_table():
         assert result.query2.sql() == 'SELECT * FROM my-project.my_dataset.table2'
 
 def test_get_query_plain_diff_tables():
+    """Test plain diff query generation."""
     with patch('data_check.processors.bigquery.QueryBigQuery') as mock_client:
         client_instance = Mock()
         mock_client.return_value = client_instance
@@ -63,8 +64,8 @@ def test_get_query_plain_diff_tables():
         )
 
         assert (
-            result.sql()
-            == f"""WITH table1 AS (SELECT * FROM table1), table2 AS (SELECT * FROM table2), inner_merged AS (SELECT table1.A, table1.B AS B__1, table2.B AS B__2, table1.C AS C__1, table2.C AS C__2 FROM table1 INNER JOIN table2 ON table1.A = table2.A), final_result AS (SELECT * FROM inner_merged WHERE COALESCE(CAST(B__1 AS TEXT), 'none') <> COALESCE(CAST(B__2 AS TEXT), 'none') OR COALESCE(C__1, 'none') <> COALESCE(C__2, 'none')) SELECT * FROM final_result"""
+            result.sql(dialect="bigquery")
+            == f"""WITH table1 AS (SELECT * FROM table1), table2 AS (SELECT * FROM table2), inner_merged AS (SELECT table1.A, table1.B AS B__1, table2.B AS B__2, table1.C AS C__1, table2.C AS C__2 FROM table1 INNER JOIN table2 ON table1.A = table2.A), final_result AS (SELECT * FROM inner_merged WHERE coalesce(CAST(B__1 AS STRING), 'none') <> coalesce(CAST(B__2 AS STRING), 'none') OR coalesce(C__1, 'none') <> coalesce(C__2, 'none')) SELECT * FROM final_result"""
         )
 
 
