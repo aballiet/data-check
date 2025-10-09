@@ -71,16 +71,16 @@ class BigQueryProcessor(DataProcessor):
         table2_pk_expr = self.pk_handler.get_concat_expression("table2")
 
         # Always use ON condition for consistency
-        join_condition_expr = condition(self.pk_handler.get_join_condition())
+        join_condition_expr = condition(self.pk_handler.get_join_condition(), dialect=self.dialect)
         agg_diff_keys = (
             select(
                 alias(func("count", "*"), "total_rows"),
                 alias(
-                    func("countif", condition(self.pk_handler.get_null_check_condition("table1"))),
+                    func("countif", condition(self.pk_handler.get_null_check_condition("table1"), dialect=self.dialect)),
                     "missing_primary_key_in_table1",
                 ),
                 alias(
-                    func("countif", condition(self.pk_handler.get_null_check_condition("table2"))),
+                    func("countif", condition(self.pk_handler.get_null_check_condition("table2"), dialect=self.dialect)),
                     "missing_primary_key_in_table2",
                 ),
             )
@@ -127,7 +127,7 @@ class BigQueryProcessor(DataProcessor):
                 suffix="__1",
             )
             pk_columns = self.pk_handler.get_select_columns("table1")
-            join_condition_expr = condition(self.pk_handler.get_join_condition())
+            join_condition_expr = condition(self.pk_handler.get_join_condition(), dialect=self.dialect)
             table2_null_condition = self.pk_handler.get_null_check_condition("table2")
 
             return (
@@ -146,7 +146,7 @@ class BigQueryProcessor(DataProcessor):
                 suffix="__2",
             )
             pk_columns = self.pk_handler.get_select_columns("table2")
-            join_condition_expr = condition(self.pk_handler.get_join_condition())
+            join_condition_expr = condition(self.pk_handler.get_join_condition(), dialect=self.dialect)
             table1_null_condition = self.pk_handler.get_null_check_condition("table1")
 
             return (
@@ -181,18 +181,18 @@ class BigQueryProcessor(DataProcessor):
             ])
 
         # Always use ON condition for consistency
-        join_condition = condition(self.pk_handler.get_join_condition())
+        join_condition = condition(self.pk_handler.get_join_condition(), dialect=self.dialect)
         inner_merged = (
-            select(*pk_columns, *data_columns)
-            .from_("table1") 
-            .join("table2", join_type="inner", on=join_condition)
+            select(*pk_columns, *data_columns, dialect=self.dialect)
+            .from_("table1", dialect=self.dialect)
+            .join("table2", join_type="inner", on=join_condition, dialect=self.dialect)
         )
 
         # Build the final result query with WHERE conditions for differences
         where_conditions = []
         for index in range(len(common_table_schema.columns_names)):
             where_conditions.append(
-                condition(f'coalesce({cast_fields_1[index]}, \'none\') <> coalesce({cast_fields_2[index]}, \'none\')')
+                condition(f'coalesce({cast_fields_1[index]}, \'none\') <> coalesce({cast_fields_2[index]}, \'none\')', dialect=self.dialect)
             )
 
         # Chain OR conditions properly
@@ -244,17 +244,19 @@ class BigQueryProcessor(DataProcessor):
         for index, col_name in enumerate(common_table_schema.columns_names):
             count_columns.extend([
                 alias(
-                    func("countif", condition(f"coalesce({cast_fields_1[index]}, {cast_fields_2[index]}) is not null")),
-                    f"{col_name}_count_not_null"
+                    func("countif", condition(f"coalesce({cast_fields_1[index]}, {cast_fields_2[index]}) is not null", dialect=self.dialect)),
+                    f"{col_name}_count_not_null",
+                    dialect=self.dialect
                 ),
                 alias(
-                    func("countif", condition(f"{cast_fields_1[index]} = {cast_fields_2[index]}")),
-                    col_name
+                    func("countif", condition(f"{cast_fields_1[index]} = {cast_fields_2[index]}", dialect=self.dialect)),
+                    col_name,
+                    dialect=self.dialect
                 )
             ])
 
         # Always use ON condition for consistency
-        join_condition_expr = condition(self.pk_handler.get_join_condition())
+        join_condition_expr = condition(self.pk_handler.get_join_condition(), dialect=self.dialect)
         count_diff = (
             select(*count_columns)
             .from_("table1")
