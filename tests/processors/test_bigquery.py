@@ -148,3 +148,58 @@ def test_run_query_check_primary_keys_unique():
 
     result = processor.run_query_check_primary_keys_unique(table="table1")
     assert result == (True, "")
+
+
+def test_check_input_is_sql_with_complex_query():
+    """Test that complex SQL queries with CTEs and subqueries are correctly detected as SQL"""
+    complex_query = """
+    SELECT
+      *
+    FROM (
+      SELECT
+        *,
+        ROW_NUMBER() OVER (
+          PARTITION BY
+            page, query, timestamp, clicks, impressions,
+            ctr, country, device, position, page_content
+          ORDER BY timestamp DESC
+        ) AS row_num
+      FROM gorgias-growth-production.dreamdata_new.google_search
+    )
+    WHERE row_num = 1;
+    """
+
+    table_path = "gorgias-growth-production.dreamdata_new.google_search"
+
+    with patch('data_check.processors.bigquery.QueryBigQuery') as mock_client:
+        client_instance = Mock()
+        mock_client.return_value = client_instance
+        processor = BigQueryProcessor(complex_query, table_path)
+
+        # Verify the complex query is correctly identified as SQL
+        assert processor.use_sql_query1 is True
+        assert processor._table1 is None
+
+        # Verify the table path is correctly identified as a table
+        assert processor.use_sql_query2 is False
+        assert processor._table2 == table_path
+
+
+def test_check_input_is_sql_method():
+    """Test the check_input_is_sql method directly with various inputs"""
+    with patch('data_check.processors.bigquery.QueryBigQuery') as mock_client:
+        client_instance = Mock()
+        mock_client.return_value = client_instance
+        # Create a processor just to access the method
+        processor = BigQueryProcessor("dataset.table1", "dataset.table2")
+
+        # Test SQL queries - should return True
+        assert processor.check_input_is_sql("SELECT * FROM table") is True
+        assert processor.check_input_is_sql("SELECT * FROM dataset.table") is True
+        assert processor.check_input_is_sql("WITH cte AS (SELECT 1) SELECT * FROM cte") is True
+
+        # Test table paths - should return False
+        assert processor.check_input_is_sql("project.dataset.table") is False
+        assert processor.check_input_is_sql("dataset.table") is False
+        assert processor.check_input_is_sql("`project.dataset.table`") is False
+        assert processor.check_input_is_sql("simple_table") is False
