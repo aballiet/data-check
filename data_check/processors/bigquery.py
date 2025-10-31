@@ -48,8 +48,31 @@ class BigQueryProcessor(DataProcessor):
         return self.with_statement_query
 
     def check_input_is_sql(self, value: str) -> bool:
-        """Check if the input is a SQL query"""
-        return " select " in (" " + value).lower() and "from " in value.lower()
+        """Check if the input is a SQL query using sqlglot parser
+
+        Returns True if the input is a valid SQL SELECT query.
+        Returns False if the input is a table reference (table, dataset.table, or project.dataset.table).
+        """
+        from sqlglot import parse_one
+
+        stripped_value = value.strip()
+
+        try:
+            # Try to parse the input as SQL
+            parsed = parse_one(stripped_value, dialect=self.dialect, error_level=None)
+
+            # If it's a Select expression with a FROM clause, it's valid SQL
+            if isinstance(parsed, Select):
+                return True
+
+            # If parsing returns a non-Select type (Column, Sub, Identifier, etc.),
+            # it's a table reference - accept it
+            return False
+
+        except Exception:
+            # If parsing fails completely, assume it's a table reference
+            # This handles edge cases where the table path might have special characters
+            return False
 
     def get_sql_exp_from_tablename(self, tablename: str) -> Select:
         return select("*").from_(tablename, dialect=self.dialect)
